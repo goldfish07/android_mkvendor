@@ -66,6 +66,8 @@ then
     mkdir ramdisk
     pushd ramdisk > /dev/null
     gunzip -c ../$BOOTIMAGEFILE-ramdisk.gz | cpio -i
+    echo "copying ramdisk > $DEVICE_DIR"
+    cp -r $TMPDIR/ramdisk/ $DEVICE_DIR/ramdisk
     popd > /dev/null
     BASE=$(cat $TMPDIR/$BOOTIMAGEFILE-base)
     CMDLINE=$(cat $TMPDIR/$BOOTIMAGEFILE-cmdline)
