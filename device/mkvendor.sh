@@ -54,6 +54,7 @@ then
     BOOTIMAGEFILE=$(basename $BOOTIMAGE)
 
     echo Output will be in $DEVICE_DIR
+    echo
     mkdir -p $DEVICE_DIR
 
     TMPDIR=/tmp/$(whoami)/bootimg
@@ -62,13 +63,16 @@ then
     cp $BOOTIMAGE $TMPDIR
     pushd $TMPDIR > /dev/null
     echo "unpacking... $BOOTIMAGEFILE"
+    echo
     unpackbootimg -i $BOOTIMAGEFILE > /dev/null
     echo "creating directory ramdisk"
+    echo
     sleep 1
     mkdir ramdisk
     pushd ramdisk > /dev/null
     gunzip -c ../$BOOTIMAGEFILE-ramdisk.gz | cpio -i
     echo "copying ramdisk > $DEVICE_DIR"
+    echo
     cp -r $TMPDIR/ramdisk/ $DEVICE_DIR/ramdisk
     popd > /dev/null
     BASE=$(cat $TMPDIR/$BOOTIMAGEFILE-base)
