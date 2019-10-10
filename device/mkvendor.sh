@@ -103,11 +103,5 @@ mv $DEVICE_DIR/device.mk $DEVICE_DIR/device_$DEVICE.mk
 
 echo Creating initial git repository.
 pushd $DEVICE_DIR
-git init
-git add .
-git commit -a -m "mkvendor.sh: Initial commit of $DEVICE"
 popd
-
 echo Done!
-echo Use the following command to set up your build environment:
-echo '  'lunch cm_$DEVICE-eng
