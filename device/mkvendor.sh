@@ -62,7 +62,7 @@ then
     mkdir -p $TMPDIR
     cp $BOOTIMAGE $TMPDIR
     pushd $TMPDIR > /dev/null
-    echo "unpacking... $BOOTIMAGEFILE"
+    echo "unpacking... $BOOTIMAGEFILE [$BOOTIMAGE]"
     echo
     unpackbootimg -i $BOOTIMAGEFILE > /dev/null
     echo "creating directory ramdisk"
