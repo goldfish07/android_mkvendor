@@ -20,29 +20,17 @@
 
 # Host modules
 PRODUCT_PACKAGES += \
-    emulator \
-    emulator-x86 \
-    emulator-arm \
-    emulator-mips \
-    emulator64-x86 \
-    emulator64-arm \
-    emulator64-mips \
-    libOpenglRender \
-    libGLES_CM_translator \
-    libGLES_V2_translator \
-    libEGL_translator \
-    lib64OpenglRender \
-    lib64GLES_CM_translator \
-    lib64GLES_V2_translator \
-    lib64EGL_translator
+
 
 # Device modules
 PRODUCT_PACKAGES += \
     egl.cfg \
     gralloc.goldfish \
+    gralloc.ranchu \
     libGLESv1_CM_emulation \
     lib_renderControl_enc \
     libEGL_emulation \
+    libGLES_android \
     libGLESv2_enc \
     libOpenglSystemCommon \
     libGLESv2_emulation \
@@ -51,13 +39,31 @@ PRODUCT_PACKAGES += \
     qemud \
     camera.goldfish \
     camera.goldfish.jpeg \
+    camera.ranchu \
+    camera.ranchu.jpeg \
     lights.goldfish \
     gps.goldfish \
-    sensors.goldfish
-
+    gps.ranchu \
+    fingerprint.goldfish \
+    sensors.goldfish \
+    audio.primary.goldfish \
+    vibrator.goldfish \
+    power.goldfish \
+    fingerprint.ranchu \
+    fingerprintd \
+    sensors.ranchu \
+    e2fsck
 
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/fstab.goldfish:root/fstab.goldfish \
     device/generic/goldfish/init.goldfish.rc:root/init.goldfish.rc \
     device/generic/goldfish/init.goldfish.sh:system/etc/init.goldfish.sh \
-    device/generic/goldfish/ueventd.goldfish.rc:root/ueventd.goldfish.rc
+    device/generic/goldfish/ueventd.goldfish.rc:root/ueventd.goldfish.rc \
+    device/generic/goldfish/init.ranchu.rc:root/init.ranchu.rc \
+    device/generic/goldfish/fstab.ranchu:root/fstab.ranchu \
+    device/generic/goldfish/ueventd.ranchu.rc:root/ueventd.ranchu.rc \
+    frameworks/native/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml
+
+PRODUCT_PACKAGE_OVERLAYS := device/generic/goldfish/overlay
+
+PRODUCT_CHARACTERISTICS := emulator

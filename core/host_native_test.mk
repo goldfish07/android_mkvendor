@@ -3,11 +3,24 @@
 ## Common flags for host native tests are added.
 ################################################
 
-LOCAL_CFLAGS += -DGTEST_OS_LINUX -DGTEST_HAS_STD_STRING -O0 -g
-LOCAL_C_INCLUDES +=  \
-    external/gtest/include
+include $(BUILD_SYSTEM)/host_test_internal.mk
 
-LOCAL_STATIC_LIBRARIES += libgtest_host libgtest_main_host
-LOCAL_SHARED_LIBRARIES +=
+needs_symlink :=
+ifndef LOCAL_MULTILIB
+  ifndef LOCAL_32_BIT_ONLY
+    LOCAL_MULTILIB := both
+
+    ifeq (,$(LOCAL_MODULE_STEM_32)$(LOCAL_MODULE_STEM_64))
+      LOCAL_MODULE_STEM_32 := $(LOCAL_MODULE)32
+      LOCAL_MODULE_STEM_64 := $(LOCAL_MODULE)64
+      needs_symlink := true
+    endif
+  endif
+endif
 
 include $(BUILD_HOST_EXECUTABLE)
+
+ifdef needs_symlink
+include $(BUILD_SYSTEM)/executable_prefer_symlink.mk
+needs_symlink :=
+endif

@@ -123,6 +123,7 @@ Summary:
   <?cs /if ?>
   <?cs set:colspan = colspan-1 ?>
 <?cs /each ?>
+<?cs call:show_annotations_list(class, "<span class='annotation-message'>", "</span><span class='annotation-message'>", "</span>") ?>
 
 </div><!-- end header -->
 
@@ -184,9 +185,9 @@ Summary:
     <tr class="<?cs if:count % #2 ?>alt-color<?cs /if ?> api apilevel-<?cs var:method.since ?>" >
         <td class="jd-typecol"><nobr>
             <?cs var:method.abstract ?>
-            <?cs var:method.synchronized ?>
-            <?cs var:method.final ?>
+            <?cs var:method.default ?>
             <?cs var:method.static ?>
+            <?cs var:method.final ?>
             <?cs call:type_link(method.generic) ?>
             <?cs call:type_link(method.returnType) ?></nobr>
         </td>
@@ -210,7 +211,10 @@ Summary:
           <?cs var:field.final ?>
           <?cs call:type_link(field.type) ?></nobr></td>
           <td class="jd-linkcol"><?cs call:cond_link(field.name, toroot, field.href, included) ?></td>
-          <td class="jd-descrcol" width="100%"><?cs call:short_descr(field) ?></td>
+          <td class="jd-descrcol" width="100%"><?cs call:short_descr(field) ?>
+              <?cs each:anno = field.showAnnotations ?>
+                  <?cs call:show_annotations_list(field, "<span class='annotation-message'>", "</span><span class='annotation-message'>", "</span>") ?>
+              <?cs /each ?></td>
       </tr>
       <?cs set:count = count + #1 ?>
     <?cs /each ?>
@@ -531,11 +535,11 @@ From <?cs var:cl.kind ?>
 <div class="jd-details api apilevel-<?cs var:method.since ?>"> 
     <h4 class="jd-details-title">
       <span class="normal">
-        <?cs var:method.scope ?> 
-        <?cs var:method.static ?> 
-        <?cs var:method.final ?> 
-        <?cs var:method.abstract ?> 
-        <?cs var:method.synchronized ?> 
+        <?cs var:method.scope ?>
+        <?cs var:method.abstract ?>
+        <?cs var:method.default ?>
+        <?cs var:method.static ?>
+        <?cs var:method.final ?>
         <?cs call:type_link(method.returnType) ?>
       </span>
       <span class="sympad"><?cs var:method.name ?></span>

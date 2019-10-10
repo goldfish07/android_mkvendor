@@ -1,76 +1,93 @@
-###########################################################
-## Standard rules for building an executable file.
-##
-## Additional inputs from base_rules.make:
-## None.
-###########################################################
+# We don't automatically set up rules to build executables for both
+# TARGET_ARCH and TARGET_2ND_ARCH.
+# By default, an executable is built for TARGET_ARCH.
+# To build it for TARGET_2ND_ARCH in a 64bit product, use "LOCAL_MULTILIB := 32"
+# To build it for both set LOCAL_MULTILIB := both and specify
+# LOCAL_MODULE_PATH_32 and LOCAL_MODULE_PATH_64 or LOCAL_MODULE_STEM_32 and
+# LOCAL_MODULE_STEM_64
 
-ifeq ($(strip $(LOCAL_MODULE_CLASS)),)
-LOCAL_MODULE_CLASS := EXECUTABLES
-endif
-ifeq ($(strip $(LOCAL_MODULE_SUFFIX)),)
-LOCAL_MODULE_SUFFIX := $(TARGET_EXECUTABLE_SUFFIX)
-endif
-
-$(call target-executable-hook)
-
-skip_build_from_source :=
-ifdef LOCAL_PREBUILT_MODULE_FILE
-ifeq (,$(call if-build-from-source,$(LOCAL_MODULE),$(LOCAL_PATH)))
-include $(BUILD_PREBUILT)
-skip_build_from_source := true
-endif
-endif
-
-ifndef skip_build_from_source
-####################################################
-## Add profiling libraries if aprof is turned
-####################################################
-ifeq ($(strip $(LOCAL_ENABLE_APROF)),true)
-  ifeq ($(LOCAL_FORCE_STATIC_EXECUTABLE), true)
-    LOCAL_STATIC_LIBRARIES += libaprof libaprof_static libc libcutils
-  else
-    LOCAL_SHARED_LIBRARIES += libaprof libaprof_runtime libc
+my_skip_this_target :=
+ifneq ($(filter address,$(SANITIZE_TARGET)),)
+  ifeq (true,$(LOCAL_FORCE_STATIC_EXECUTABLE))
+    my_skip_this_target := true
+  else ifeq (false, $(LOCAL_CLANG))
+    my_skip_this_target := true
   endif
-  LOCAL_WHOLE_STATIC_LIBRARIES += libaprof_aux
 endif
 
-include $(BUILD_SYSTEM)/dynamic_binary.mk
+ifneq (true,$(my_skip_this_target))
 
-# Define PRIVATE_ variables from global vars
-my_target_global_ld_dirs := $(TARGET_GLOBAL_LD_DIRS)
-my_target_global_ldflags := $(TARGET_GLOBAL_LDFLAGS)
-my_target_fdo_lib := $(TARGET_FDO_LIB)
-my_target_libgcc := $(TARGET_LIBGCC)
-my_target_crtbegin_dynamic_o := $(TARGET_CRTBEGIN_DYNAMIC_O)
-my_target_crtbegin_static_o := $(TARGET_CRTBEGIN_STATIC_O)
-my_target_crtend_o := $(TARGET_CRTEND_O)
-ifdef LOCAL_SDK_VERSION
-# Make sure the prebuilt NDK paths are put ahead of the TARGET_GLOBAL_LD_DIRS,
-# so we don't have race condition when the system libraries (such as libc, libstdc++) are also built in the tree.
-my_target_global_ld_dirs := \
-    $(addprefix -L, $(patsubst %/,%,$(dir $(my_ndk_stl_shared_lib_fullpath))) \
-    $(my_ndk_version_root)/usr/lib) \
-    $(my_target_global_ld_dirs)
-my_target_global_ldflags := $(my_ndk_stl_shared_lib) $(my_target_global_ldflags)
-my_target_crtbegin_dynamic_o := $(wildcard $(my_ndk_version_root)/usr/lib/crtbegin_dynamic.o)
-my_target_crtbegin_static_o := $(wildcard $(my_ndk_version_root)/usr/lib/crtbegin_static.o)
-my_target_crtend_o := $(wildcard $(my_ndk_version_root)/usr/lib/crtend_android.o)
+my_prefix := TARGET_
+include $(BUILD_SYSTEM)/multilib.mk
+
+ifeq ($(my_module_multilib),both)
+ifeq ($(LOCAL_MODULE_PATH_32)$(LOCAL_MODULE_STEM_32),)
+$(error $(LOCAL_PATH): LOCAL_MODULE_STEM_32 or LOCAL_MODULE_PATH_32 is required for LOCAL_MULTILIB := both for module $(LOCAL_MODULE))
 endif
-$(linked_module): PRIVATE_TARGET_GLOBAL_LD_DIRS := $(my_target_global_ld_dirs)
-$(linked_module): PRIVATE_TARGET_GLOBAL_LDFLAGS := $(my_target_global_ldflags)
-$(linked_module): PRIVATE_TARGET_FDO_LIB := $(my_target_fdo_lib)
-$(linked_module): PRIVATE_TARGET_LIBGCC := $(my_target_libgcc)
-$(linked_module): PRIVATE_TARGET_CRTBEGIN_DYNAMIC_O := $(my_target_crtbegin_dynamic_o)
-$(linked_module): PRIVATE_TARGET_CRTBEGIN_STATIC_O := $(my_target_crtbegin_static_o)
-$(linked_module): PRIVATE_TARGET_CRTEND_O := $(my_target_crtend_o)
+ifeq ($(LOCAL_MODULE_PATH_64)$(LOCAL_MODULE_STEM_64),)
+$(error $(LOCAL_PATH): LOCAL_MODULE_STEM_64 or LOCAL_MODULE_PATH_64 is required for LOCAL_MULTILIB := both for module $(LOCAL_MODULE))
+endif
+else #!LOCAL_MULTILIB == both
+LOCAL_NO_2ND_ARCH_MODULE_SUFFIX := true
+endif
 
-ifeq ($(LOCAL_FORCE_STATIC_EXECUTABLE),true)
-$(linked_module): $(my_target_crtbegin_static_o) $(all_objects) $(all_libraries) $(my_target_crtend_o)
-	$(transform-o-to-static-executable)
+# if TARGET_PREFER_32_BIT_EXECUTABLES is set, try to build 32-bit first
+ifdef TARGET_2ND_ARCH
+ifeq ($(TARGET_PREFER_32_BIT_EXECUTABLES),true)
+LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
 else
-$(linked_module): $(my_target_crtbegin_dynamic_o) $(all_objects) $(all_libraries) $(my_target_crtend_o)
-	$(transform-o-to-executable)
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+endif
 endif
 
-endif  # skip_build_from_source
+my_skip_non_preferred_arch :=
+
+ifeq ($(LOCAL_SDCLANG), true)
+include $(SDCLANG_FLAG_DEFS)
+endif
+
+# check if preferred arch is supported
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+ifeq ($(my_module_arch_supported),true)
+# first arch is supported
+include $(BUILD_SYSTEM)/executable_internal.mk
+ifneq ($(my_module_multilib),both)
+my_skip_non_preferred_arch := true
+endif
+endif
+
+# check if preferred arch was not supported or asked to build both
+ifndef my_skip_non_preferred_arch
+ifdef TARGET_2ND_ARCH
+
+# check if the non-preferred arch is the primary or secondary
+ifeq ($(TARGET_PREFER_32_BIT_EXECUTABLES),true)
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+else
+LOCAL_2ND_ARCH_VAR_PREFIX := $(TARGET_2ND_ARCH_VAR_PREFIX)
+endif
+
+# check if non-preferred arch is supported
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+ifeq ($(my_module_arch_supported),true)
+# non-preferred arch is supported
+OVERRIDE_BUILT_MODULE_PATH :=
+LOCAL_BUILT_MODULE :=
+LOCAL_INSTALLED_MODULE :=
+LOCAL_INTERMEDIATE_TARGETS :=
+include $(BUILD_SYSTEM)/executable_internal.mk
+endif
+endif # TARGET_2ND_ARCH
+endif # !my_skip_non_preferred_arch || LOCAL_MULTILIB
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+LOCAL_NO_2ND_ARCH_MODULE_SUFFIX :=
+
+my_module_arch_supported :=
+
+ifeq ($(LOCAL_SDCLANG), true)
+ifeq ($(LOCAL_SDCLANG_LTO), true)
+include $(SDCLANG_LTO_DEFS)
+endif
+endif
+
+endif

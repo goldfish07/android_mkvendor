@@ -19,11 +19,21 @@ $.ajaxSetup({
 
 /******  ON LOAD SET UP STUFF *********/
 
-var navBarIsFixed = false;
 $(document).ready(function() {
 
+  // show lang dialog if the URL includes /intl/
+  //if (location.pathname.substring(0,6) == "/intl/") {
+  //  var lang = location.pathname.split('/')[2];
+   // if (lang != getLangPref()) {
+   //   $("#langMessage a.yes").attr("onclick","changeLangPref('" + lang
+   //       + "', true); $('#langMessage').hide(); return false;");
+  //    $("#langMessage .lang." + lang).show();
+   //   $("#langMessage").show();
+   // }
+  //}
+
   // load json file for JD doc search suggestions
-  $.getScript(toRoot + 'reference/jd_lists.js');
+  $.getScript(toRoot + 'jd_lists_unified.js');
   // load json file for Android API search suggestions
   $.getScript(toRoot + 'reference/lists.js');
   // load json files for Google services API suggestions
@@ -46,7 +56,7 @@ $(document).ready(function() {
 
   // setup keyboard listener for search shortcut
   $('body').keyup(function(event) {
-    if (event.which == 191) {
+    if (event.which == 191 && $(event.target).is(':not(:input)')) {
       $('#search_autocomplete').focus();
     }
   });
@@ -61,13 +71,12 @@ $(document).ready(function() {
   });
 
   // initialize the divs with custom scrollbars
-  $('.scroll-pane').jScrollPane( {verticalGutter:0} );
-
-  // add HRs below all H2s (except for a few other h2 variants)
-  $('h2').not('#qv h2').not('#tb h2').not('.sidebox h2').not('#devdoc-nav h2').not('h2.norule').css({marginBottom:0}).after('<hr/>');
+  if (window.innerWidth >= 720) {
+    $('.scroll-pane').jScrollPane({verticalGutter: 0});
+  }
 
   // set up the search close button
-  $('.search .close').click(function() {
+  $('#search-close').on('click touchend', function() {
     $searchInput = $('#search_autocomplete');
     $searchInput.attr('value', '');
     $(this).addClass("hide");
@@ -77,38 +86,13 @@ $(document).ready(function() {
     hideResults();
   });
 
-  // Set up quicknav
-  var quicknav_open = false;
-  $("#btn-quicknav").click(function() {
-    if (quicknav_open) {
-      $(this).removeClass('active');
-      quicknav_open = false;
-      collapse();
-    } else {
-      $(this).addClass('active');
-      quicknav_open = true;
-      expand();
-    }
-  })
-
-  var expand = function() {
-   $('#header-wrap').addClass('quicknav');
-   $('#quicknav').stop().show().animate({opacity:'1'});
-  }
-
-  var collapse = function() {
-    $('#quicknav').stop().animate({opacity:'0'}, 100, function() {
-      $(this).hide();
-      $('#header-wrap').removeClass('quicknav');
-    });
-  }
-
 
   //Set up search
   $("#search_autocomplete").focus(function() {
     $("#search-container").addClass('active');
   })
-  $("#search-container").mouseover(function() {
+  $("#search-container").on('mouseover touchend', function(e) {
+    if ($(e.target).is('#search-close')) { return; }
     $("#search-container").addClass('active');
     $("#search_autocomplete").focus();
   })
@@ -165,42 +149,95 @@ $(document).ready(function() {
 
   // Highlight the header tabs...
   // highlight Design tab
+  var urlSegments = pagePathOriginal.split('/');
+  var navEl = $(".dac-nav-list");
+  var subNavEl = navEl.find(".dac-nav-secondary");
+  var parentNavEl;
+
   if ($("body").hasClass("design")) {
-    $("#header li.design a").addClass("selected");
+    navEl.find("> li.design > a").addClass("selected");
+  // highlight About tabs
+  } else if ($("body").hasClass("about")) {
+    if (urlSegments[1] == "about" || urlSegments[1] == "wear" || urlSegments[1] == "tv" || urlSegments[1] == "auto") {
+      navEl.find("> li.home > a").addClass('has-subnav');
+      subNavEl.find("li." + urlSegments[1] + " > a").addClass("selected");
+    } else {
+      navEl.find("> li.home > a").addClass('selected');
+    }
+
+// highlight NDK tabs
+  } else if ($("body").hasClass("ndk")) {
+    parentNavEl = navEl.find("> li.ndk > a");
+    parentNavEl.addClass('has-subnav');
+    if ($("body").hasClass("guide")) {
+      navEl.find("> li.guides > a").addClass("selected ndk");
+    } else if ($("body").hasClass("reference")) {
+      navEl.find("> li.reference > a").addClass("selected ndk");
+    } else if ($("body").hasClass("samples")) {
+      navEl.find("> li.samples > a").addClass("selected ndk");
+    } else if ($("body").hasClass("downloads")) {
+      navEl.find("> li.downloads > a").addClass("selected ndk");
+    }
 
   // highlight Develop tab
   } else if ($("body").hasClass("develop") || $("body").hasClass("google")) {
-    $("#header li.develop a").addClass("selected");
+    parentNavEl = navEl.find("> li.develop > a");
+    parentNavEl.addClass('has-subnav');
+
     // In Develop docs, also highlight appropriate sub-tab
-    var rootDir = pagePathOriginal.substring(1,pagePathOriginal.indexOf('/', 1));
-    if (rootDir == "training") {
-      $("#nav-x li.training a").addClass("selected");
-    } else if (rootDir == "guide") {
-      $("#nav-x li.guide a").addClass("selected");
-    } else if (rootDir == "reference") {
+    if (urlSegments[1] == "training") {
+      subNavEl.find("li.training > a").addClass("selected");
+    } else if (urlSegments[1] == "guide") {
+      subNavEl.find("li.guide > a").addClass("selected");
+    } else if (urlSegments[1] == "reference") {
       // If the root is reference, but page is also part of Google Services, select Google
       if ($("body").hasClass("google")) {
-        $("#nav-x li.google a").addClass("selected");
+        subNavEl.find("li.google > a").addClass("selected");
       } else {
-        $("#nav-x li.reference a").addClass("selected");
+        subNavEl.find("li.reference > a").addClass("selected");
       }
-    } else if ((rootDir == "tools") || (rootDir == "sdk")) {
-      $("#nav-x li.tools a").addClass("selected");
+    } else if ((urlSegments[1] == "tools") || (urlSegments[1] == "sdk")) {
+      subNavEl.find("li.tools > a").addClass("selected");
     } else if ($("body").hasClass("google")) {
-      $("#nav-x li.google a").addClass("selected");
+      subNavEl.find("li.google > a").addClass("selected");
     } else if ($("body").hasClass("samples")) {
-      $("#nav-x li.samples a").addClass("selected");
+      subNavEl.find("li.samples > a").addClass("selected");
+    } else if ($("body").hasClass("preview")) {
+      subNavEl.find("li.preview > a").addClass("selected");
+    } else {
+      parentNavEl.removeClass('has-subnav').addClass("selected");
     }
-
   // highlight Distribute tab
   } else if ($("body").hasClass("distribute")) {
-    $("#header li.distribute a").addClass("selected");
+    parentNavEl = navEl.find("> li.distribute > a");
+    parentNavEl.addClass('has-subnav');
+
+    if (urlSegments[2] == "users") {
+      subNavEl.find("li.users > a").addClass("selected");
+    } else if (urlSegments[2] == "engage") {
+      subNavEl.find("li.engage > a").addClass("selected");
+    } else if (urlSegments[2] == "monetize") {
+      subNavEl.find("li.monetize > a").addClass("selected");
+    } else if (urlSegments[2] == "analyze") {
+      subNavEl.find("li.analyze > a").addClass("selected");
+    } else if (urlSegments[2] == "tools") {
+      subNavEl.find("li.essentials > a").addClass("selected");
+    } else if (urlSegments[2] == "stories") {
+      subNavEl.find("li.stories > a").addClass("selected");
+    } else if (urlSegments[2] == "essentials") {
+      subNavEl.find("li.essentials > a").addClass("selected");
+    } else if (urlSegments[2] == "googleplay") {
+      subNavEl.find("li.googleplay > a").addClass("selected");
+    } else {
+      parentNavEl.removeClass('has-subnav').addClass("selected");
+    }
   }
 
   // set global variable so we can highlight the sidenav a bit later (such as for google reference)
   // and highlight the sidenav
   mPagePath = pagePath;
   highlightSidenav();
+  buildBreadcrumbs();
 
   // set up prev/next links if they exist
   var $selNavLink = $('#nav').find('a[href="' + pagePath + '"]');
@@ -215,7 +252,7 @@ $(document).ready(function() {
     var crossBoundaries = ($("body.design").length > 0) || ($("body.guide").length > 0) ? true :
 false; // navigate across topic boundaries only in design docs
     if ($prevListItem.length) {
-      if ($prevListItem.hasClass('nav-section')) {
+      if ($prevListItem.hasClass('nav-section') || crossBoundaries) {
         // jump to last topic of previous section
         $prevLink = $prevListItem.find('a:last');
       } else if (!$selListItem.hasClass('nav-section')) {
@@ -238,7 +275,6 @@ false; // navigate across topic boundaries only in design docs
     // set up next links
     var $nextLink = [];
     var startClass = false;
-    var training = $(".next-class-link").length; // decides whether to provide "next class" link
     var isCrossingBoundary = false;
 
     if ($selListItem.hasClass('nav-section') && $selListItem.children('div.empty').length == 0) {
@@ -265,13 +301,15 @@ false; // navigate across topic boundaries only in design docs
       if ($nextLink.length == 0) {
         isCrossingBoundary = true;
         // no more topics in this section, jump to the first topic in the next section
-        $nextLink = $selListItem.parents('li:eq(0)').next('li.nav-section').find('a:eq(0)');
+        $nextLink = $selListItem.parents('li:eq(0)').next('li').find('a:eq(0)');
         if (!$nextLink.length) {  // Go up another layer to look for next page (lesson > class > course)
           $nextLink = $selListItem.parents('li:eq(1)').next('li.nav-section').find('a:eq(0)');
           if ($nextLink.length == 0) {
             // if that doesn't work, we're at the end of the list, so disable NEXT link
             $('.next-page-link').attr('href','').addClass("disabled")
                                 .click(function() { return false; });
+            // and completely hide the one in the footer
+            $('.content-footer .next-page-link').hide();
           }
         }
       }
@@ -290,13 +328,19 @@ false; // navigate across topic boundaries only in design docs
       $('.next-page-link').attr('href','')
                           .removeClass("hide").addClass("disabled")
                           .click(function() { return false; });
+      // and completely hide the one in the footer
+      $('.content-footer .next-page-link').hide();
       if ($nextLink.length) {
         $('.next-class-link').attr('href',$nextLink.attr('href'))
-                             .removeClass("hide").append($nextLink.html());
+                             .removeClass("hide")
+                             .append(": " + $nextLink.html());
         $('.next-class-link').find('.new').empty();
       }
     } else {
-      $('.next-page-link').attr('href', $nextLink.attr('href')).removeClass("hide");
+      $('.next-page-link').attr('href', $nextLink.attr('href'))
+                          .removeClass("hide");
+      // for the footer link, also add the next page title
+      $('.content-footer .next-page-link').append(": " + $nextLink.html());
     }
 
     if (!startClass && $prevLink.length) {
@@ -308,14 +352,6 @@ false; // navigate across topic boundaries only in design docs
       }
     }
 
-    // If this is a training 'article', there should be no prev/next nav
-    // ... if the grandparent is the "nav" ... and it has no child list items...
-    if (training && $selListItem.parents('ul').eq(1).is('[id="nav"]') &&
-        !$selListItem.find('li').length) {
-      $('.next-page-link,.prev-page-link').attr('href','').addClass("disabled")
-                          .click(function() { return false; });
-    }
-
   }
 
 
@@ -323,37 +359,45 @@ false; // navigate across topic boundaries only in design docs
   // Set up the course landing pages for Training with class names and descriptions
   if ($('body.trainingcourse').length) {
     var $classLinks = $selListItem.find('ul li a').not('#nav .nav-section .nav-section ul a');
-    var $classDescriptions = $classLinks.attr('description');
+
+    // create an array for all the class descriptions
+    var $classDescriptions = new Array($classLinks.length);
+    var lang = getLangPref();
+    $classLinks.each(function(index) {
+      var langDescr = $(this).attr(lang + "-description");
+      if (typeof langDescr !== 'undefined' && langDescr !== false) {
+        // if there's a class description in the selected language, use that
+        $classDescriptions[index] = langDescr;
+      } else {
+        // otherwise, use the default english description
+        $classDescriptions[index] = $(this).attr("description");
+      }
+    });
 
     var $olClasses  = $('<ol class="class-list"></ol>');
     var $liClass;
-    var $imgIcon;
     var $h2Title;
     var $pSummary;
     var $olLessons;
     var $liLesson;
     $classLinks.each(function(index) {
-      $liClass  = $('<li></li>');
-      $h2Title  = $('<a class="title" href="'+$(this).attr('href')+'"><h2>' + $(this).html()+'</h2><span></span></a>');
-      $pSummary = $('<p class="description">' + $(this).attr('description') + '</p>');
+      $liClass  = $('<li class="clearfix"></li>');
+      $h2Title  = $('<a class="title" href="'+$(this).attr('href')+'"><h2 class="norule">' + $(this).html()+'</h2><span></span></a>');
+      $pSummary = $('<p class="description">' + $classDescriptions[index] + '</p>');
 
       $olLessons  = $('<ol class="lesson-list"></ol>');
 
       $lessons = $(this).closest('li').find('ul li a');
 
       if ($lessons.length) {
-        $imgIcon = $('<img src="'+toRoot+'assets/images/resource-tutorial.png" '
-            + ' width="64" height="64" alt=""/>');
         $lessons.each(function(index) {
           $olLessons.append('<li><a href="'+$(this).attr('href')+'">' + $(this).html()+'</a></li>');
         });
       } else {
-        $imgIcon = $('<img src="'+toRoot+'assets/images/resource-article.png" '
-            + ' width="64" height="64" alt=""/>');
         $pSummary.addClass('article');
       }
 
-      $liClass.append($h2Title).append($imgIcon).append($pSummary).append($olLessons);
+      $liClass.append($h2Title).append($pSummary).append($olLessons);
       $olClasses.append($liClass);
     });
     $('.jd-descr').append($olClasses);
@@ -371,87 +415,15 @@ false; // navigate across topic boundaries only in design docs
   /* Resize nav height when window height changes */
   $(window).resize(function() {
     if ($('#side-nav').length == 0) return;
-    var stylesheet = $('link[rel="stylesheet"][class="fullscreen"]');
-    setNavBarLeftPos(); // do this even if sidenav isn't fixed because it could become fixed
+    setNavBarDimensions(); // do this even if sidenav isn't fixed because it could become fixed
     // make sidenav behave when resizing the window and side-scolling is a concern
-    if (navBarIsFixed) {
-      if ((stylesheet.attr("disabled") == "disabled") || stylesheet.length == 0) {
-        updateSideNavPosition();
-      } else {
-        updateSidenavFullscreenWidth();
-      }
-    }
-    resizeNav();
+    updateSideNavDimensions();
+    checkSticky();
+    resizeNav(250);
   });
 
-
-  // Set up fixed navbar
-  var prevScrollLeft = 0; // used to compare current position to previous position of horiz scroll
-  $(window).scroll(function(event) {
-    if ($('#side-nav').length == 0) return;
-    if (event.target.nodeName == "DIV") {
-      // Dump scroll event if the target is a DIV, because that means the event is coming
-      // from a scrollable div and so there's no need to make adjustments to our layout
-      return;
-    }
-    var scrollTop = $(window).scrollTop();
-    var headerHeight = $('#header').outerHeight();
-    var subheaderHeight = $('#nav-x').outerHeight();
-    var searchResultHeight = $('#searchResults').is(":visible") ?
-                             $('#searchResults').outerHeight() : 0;
-    var totalHeaderHeight = headerHeight + subheaderHeight + searchResultHeight;
-    // we set the navbar fixed when the scroll position is beyond the height of the site header...
-    var navBarShouldBeFixed = scrollTop > totalHeaderHeight;
-    // ... except if the document content is shorter than the sidenav height.
-    // (this is necessary to avoid crazy behavior on OSX Lion due to overscroll bouncing)
-    if ($("#doc-col").height() < $("#side-nav").height()) {
-      navBarShouldBeFixed = false;
-    }
-
-    var scrollLeft = $(window).scrollLeft();
-    // When the sidenav is fixed and user scrolls horizontally, reposition the sidenav to match
-    if (navBarIsFixed && (scrollLeft != prevScrollLeft)) {
-      updateSideNavPosition();
-      prevScrollLeft = scrollLeft;
-    }
-
-    // Don't continue if the header is sufficently far away
-    // (to avoid intensive resizing that slows scrolling)
-    if (navBarIsFixed && navBarShouldBeFixed) {
-      return;
-    }
-
-    if (navBarIsFixed != navBarShouldBeFixed) {
-      if (navBarShouldBeFixed) {
-        // make it fixed
-        var width = $('#devdoc-nav').width();
-        $('#devdoc-nav')
-            .addClass('fixed')
-            .css({'width':width+'px'})
-            .prependTo('#body-content');
-        // add neato "back to top" button
-        $('#devdoc-nav a.totop').css({'display':'block','width':$("#nav").innerWidth()+'px'});
-
-        // update the sidenaav position for side scrolling
-        updateSideNavPosition();
-      } else {
-        // make it static again
-        $('#devdoc-nav')
-            .removeClass('fixed')
-            .css({'width':'auto','margin':''})
-            .prependTo('#side-nav');
-        $('#devdoc-nav a.totop').hide();
-      }
-      navBarIsFixed = navBarShouldBeFixed;
-    }
-
-    resizeNav(250); // pass true in order to delay the scrollbar re-initialization for performance
-  });
-
-
-  var navBarLeftPos;
   if ($('#devdoc-nav').length) {
-    setNavBarLeftPos();
+    setNavBarDimensions();
   }
 
 
@@ -494,7 +466,12 @@ false; // navigate across topic boundaries only in design docs
   $('h2').click(function() {
     var id = $(this).attr('id');
     if (id) {
-      document.location.hash = id;
+      if (history && history.replaceState) {
+        // Change url without scrolling.
+        history.replaceState({}, '', '#' + id);
+      } else {
+        document.location.hash = id;
+      }
     }
   });
 
@@ -502,15 +479,6 @@ false; // navigate across topic boundaries only in design docs
   var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
   po.src = 'https://apis.google.com/js/plusone.js';
   var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-
-
-  // Revise the sidenav widths to make room for the scrollbar
-  // which avoids the visible width from changing each time the bar appears
-  var $sidenav = $("#side-nav");
-  var sidenav_width = parseInt($sidenav.innerWidth());
-
-  $("#devdoc-nav  #nav").css("width", sidenav_width - 4 + "px"); // 4px is scrollbar width
-
 
   $(".scroll-pane").removeAttr("tabindex"); // get rid of tabindex added by jscroller
 
@@ -522,7 +490,11 @@ false; // navigate across topic boundaries only in design docs
     }
   }
 
+  // Resize once loading is finished
   resizeNav();
+  // Check if there's an anchor that we need to scroll into view.
+  // A delay is needed, because some browsers do not immediately scroll down to the anchor
+  window.setTimeout(offsetScrollForSticky, 100);
 
   /* init the language selector based on user cookie for lang */
   loadLangPref();
@@ -555,8 +527,145 @@ false; // navigate across topic boundaries only in design docs
     cookiePath = "distribute_";
   }
 
+
+  /* setup shadowbox for any videos that want it */
+  var $videoLinks = $("a.video-shadowbox-button, a.notice-developers-video");
+  if ($videoLinks.length) {
+    // if there's at least one, add the shadowbox HTML to the body
+    $('body').prepend(
+'<div id="video-container">'+
+  '<div id="video-frame">'+
+    '<div class="video-close">'+
+      '<span id="icon-video-close" onclick="closeVideo()">&nbsp;</span>'+
+    '</div>'+
+    '<div id="youTubePlayer"></div>'+
+  '</div>'+
+'</div>');
+
+    // loads the IFrame Player API code asynchronously.
+    $.getScript("https://www.youtube.com/iframe_api");
+
+    $videoLinks.each(function() {
+      var videoId = $(this).attr('href').split('?v=')[1];
+      $(this).click(function(event) {
+        event.preventDefault();
+        startYouTubePlayer(videoId);
+      });
+    });
+  }
 });
 // END of the onload event
+
+
+var youTubePlayer;
+function onYouTubeIframeAPIReady() {
+}
+
+/* Returns the height the shadowbox video should be. It's based on the current
+   height of the "video-frame" element, which is 100% height for the window.
+   Then minus the margin so the video isn't actually the full window height. */
+function getVideoHeight() {
+  var frameHeight = $("#video-frame").height();
+  var marginTop = $("#video-frame").css('margin-top').split('px')[0];
+  return frameHeight - (marginTop * 2);
+}
+
+var mPlayerPaused = false;
+
+function startYouTubePlayer(videoId) {
+  $("#video-container").show();
+  $("#video-frame").show();
+  mPlayerPaused = false;
+
+  // compute the size of the player so it's centered in window
+  var maxWidth = 940;  // the width of the web site content
+  var videoAspect = .5625; // based on 1280x720 resolution
+  var maxHeight = maxWidth * videoAspect;
+  var videoHeight = getVideoHeight();
+  var videoWidth = videoHeight / videoAspect;
+  if (videoWidth > maxWidth) {
+    videoWidth = maxWidth;
+    videoHeight = maxHeight;
+  }
+  $("#video-frame").css('width', videoWidth);
+
+  // check if we've already created this player
+  if (youTubePlayer == null) {
+    // check if there's a start time specified
+    var idAndHash = videoId.split("#");
+    var startTime = 0;
+    if (idAndHash.length > 1) {
+      startTime = idAndHash[1].split("t=")[1] != undefined ? idAndHash[1].split("t=")[1] : 0;
+    }
+    // enable localized player
+    var lang = getLangPref();
+    var captionsOn = lang == 'en' ? 0 : 1;
+
+    youTubePlayer = new YT.Player('youTubePlayer', {
+      height: videoHeight,
+      width: videoWidth,
+      videoId: idAndHash[0],
+      playerVars: {start: startTime, hl: lang, cc_load_policy: captionsOn},
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  } else {
+    // reset the size in case the user adjusted the window since last play
+    youTubePlayer.setSize(videoWidth, videoHeight);
+    // if a video different from the one already playing was requested, cue it up
+    if (videoId != youTubePlayer.getVideoUrl().split('?v=')[1].split('&')[0].split('%')[0]) {
+      youTubePlayer.cueVideoById(videoId);
+    }
+    youTubePlayer.playVideo();
+  }
+}
+
+function onPlayerReady(event) {
+  event.target.playVideo();
+  mPlayerPaused = false;
+}
+
+function closeVideo() {
+  try {
+    youTubePlayer.pauseVideo();
+  } catch(e) {
+  }
+  $("#video-container").fadeOut(200);
+}
+
+/* Track youtube playback for analytics */
+function onPlayerStateChange(event) {
+    // Video starts, send the video ID
+    if (event.data == YT.PlayerState.PLAYING) {
+      if (mPlayerPaused) {
+        ga('send', 'event', 'Videos', 'Resume',
+            youTubePlayer.getVideoUrl().split('?v=')[1].split('&')[0].split('%')[0]);
+      } else {
+        // track the start playing event so we know from which page the video was selected
+        ga('send', 'event', 'Videos', 'Start: ' +
+            youTubePlayer.getVideoUrl().split('?v=')[1].split('&')[0].split('%')[0],
+            'on: ' + document.location.href);
+      }
+      mPlayerPaused = false;
+    }
+    // Video paused, send video ID and video elapsed time
+    if (event.data == YT.PlayerState.PAUSED) {
+      ga('send', 'event', 'Videos', 'Paused',
+            youTubePlayer.getVideoUrl().split('?v=')[1].split('&')[0].split('%')[0],
+            youTubePlayer.getCurrentTime());
+      mPlayerPaused = true;
+    }
+    // Video finished, send video ID and video elapsed time
+    if (event.data == YT.PlayerState.ENDED) {
+      ga('send', 'event', 'Videos', 'Finished',
+            youTubePlayer.getVideoUrl().split('?v=')[1].split('&')[0].split('%')[0],
+            youTubePlayer.getCurrentTime());
+      mPlayerPaused = true;
+    }
+}
+
 
 
 function initExpandableNavItems(rootTag) {
@@ -592,6 +701,35 @@ function initExpandableNavItems(rootTag) {
     return false;
   });
 }
+
+
+/** Create the list of breadcrumb links in the sticky header */
+function buildBreadcrumbs() {
+  var $breadcrumbUl =  $(".dac-header-crumbs");
+  var primaryNavLink = ".dac-nav-list > .dac-nav-item > .dac-nav-link";
+
+  // Add the secondary horizontal nav item, if provided
+  var $selectedSecondNav = $(".dac-nav-secondary .dac-nav-link.selected").clone()
+    .attr('class', 'dac-header-crumbs-link');
+
+  if ($selectedSecondNav.length) {
+    $breadcrumbUl.prepend($('<li class="dac-header-crumbs-item">').append($selectedSecondNav));
+  }
+
+  // Add the primary horizontal nav
+  var $selectedFirstNav = $(primaryNavLink + ".selected, " + primaryNavLink + ".has-subnav").clone()
+    .attr('class', 'dac-header-crumbs-link');
+
+  // If there's no header nav item, use the logo link and title from alt text
+  if ($selectedFirstNav.length < 1) {
+    $selectedFirstNav = $('<a class="dac-header-crumbs-link">')
+        .attr('href', $("div#header .logo a").attr('href'))
+        .text($("div#header .logo img").attr('alt'));
+  }
+  $breadcrumbUl.prepend($('<li class="dac-header-crumbs-item">').append($selectedFirstNav));
+}
+
+
 
 /** Highlight the current page in sidenav, expanding children as appropriate */
 function highlightSidenav() {
@@ -644,23 +782,26 @@ function toggleFullscreen(enable) {
     setTimeout(updateSidenavFixedWidth,delay); // need to wait a moment for css to switch
     enabled = false;
   }
-  writeCookie("fullscreen", enabled, null, null);
-  setNavBarLeftPos();
+  writeCookie("fullscreen", enabled, null);
+  setNavBarDimensions();
   resizeNav(delay);
-  updateSideNavPosition();
+  updateSideNavDimensions();
   setTimeout(initSidenavHeightResize,delay);
 }
 
-
-function setNavBarLeftPos() {
+// TODO: Refactor into a closure.
+var navBarLeftPos;
+var navBarWidth;
+function setNavBarDimensions() {
   navBarLeftPos = $('#body-content').offset().left;
+  navBarWidth = $('#side-nav').width();
 }
 
 
-function updateSideNavPosition() {
+function updateSideNavDimensions() {
   var newLeft = $(window).scrollLeft() - navBarLeftPos;
-  $('#devdoc-nav').css({left: -newLeft});
-  $('#devdoc-nav .totop').css({left: -(newLeft - parseInt($('#side-nav').css('margin-left')))});
+  $('#devdoc-nav').css({left: -newLeft, width: navBarWidth});
+  $('#devdoc-nav .totop').css({left: -(newLeft - parseInt($('#side-nav').css('padding-left')))});
 }
 
 // TODO: use $(document).ready instead
@@ -694,7 +835,7 @@ $(document).ready(function() {
 
 
 
-/* ######### RESIZE THE SIDENAV HEIGHT ########## */
+/* ######### RESIZE THE SIDENAV ########## */
 
 function resizeNav(delay) {
   var $nav = $("#devdoc-nav");
@@ -705,19 +846,18 @@ function resizeNav(delay) {
   // Then figure out based on scroll position whether the header is visible
   var windowHeight = $window.height();
   var scrollTop = $window.scrollTop();
-  var headerHeight = $('#header').outerHeight();
-  var subheaderHeight = $('#nav-x').outerHeight();
-  var headerVisible = (scrollTop < (headerHeight + subheaderHeight));
+  var headerHeight = $('#header-wrapper').outerHeight();
+  var headerVisible = scrollTop < stickyTop;
 
   // get the height of space between nav and top of window.
   // Could be either margin or top position, depending on whether the nav is fixed.
-  var topMargin = (parseInt($nav.css('margin-top')) || parseInt($nav.css('top'))) + 1;
+  var topMargin = (parseInt($nav.css('top')) || 20) + 1;
   // add 1 for the #side-nav bottom margin
 
   // Depending on whether the header is visible, set the side nav's height.
   if (headerVisible) {
     // The sidenav height grows as the header goes off screen
-    navHeight = windowHeight - (headerHeight + subheaderHeight - scrollTop) - topMargin;
+    navHeight = windowHeight - (headerHeight - scrollTop) - topMargin;
   } else {
     // Once header is off screen, the nav height is almost full window height
     navHeight = windowHeight - topMargin;
@@ -726,7 +866,9 @@ function resizeNav(delay) {
 
 
   $scrollPanes = $(".scroll-pane");
-  if ($scrollPanes.length > 1) {
+  if ($window.width() < 720) {
+    $nav.css('height', '');
+  } else if ($scrollPanes.length > 1) {
     // subtract the height of the api level widget and nav swapper from the available nav height
     navHeight -= ($('#api-nav-header').outerHeight(true) + $('#nav-swap').outerHeight(true));
 
@@ -794,7 +936,7 @@ function delayedReInitScrollbars(delay) {
 function reInitScrollbars() {
   var pane = $(".scroll-pane").each(function(){
     var api = $(this).data('jsp');
-    if (!api) { setTimeout(reInitScrollbars,300); return;}
+    if (!api) {return;}
     api.reinitialise( {verticalGutter:0} );
   });
   $(".scroll-pane").removeAttr("tabindex"); // get rid of tabindex added by jscroller
@@ -806,7 +948,7 @@ function reInitScrollbars() {
 function saveNavPanels() {
   var basePath = getBaseUri(location.pathname);
   var section = basePath.substring(1,basePath.indexOf("/",1));
-  writeCookie("height", resizePackagesNav.css("height"), section, null);
+  writeCookie("height", resizePackagesNav.css("height"), section);
 }
 
 
@@ -830,6 +972,7 @@ function restoreHeight(packageHeight) {
 /** Scroll the jScrollPane to make the currently selected item visible
     This is called when the page finished loading. */
 function scrollIntoView(nav) {
+  return;
   var $nav = $("#"+nav);
   var element = $nav.jScrollPane({/* ...settings... */});
   var api = element.data('jsp');
@@ -842,7 +985,7 @@ function scrollIntoView(nav) {
     }
     // get the selected item's offset from its container nav by measuring the item's offset
     // relative to the document then subtract the container nav's offset relative to the document
-    var selectedOffset = $selected.offset().top - $nav.offset().top;
+    var selectedOffset = $selected.offset().top - $nav.offset().top + 60;
     if (selectedOffset > $nav.height() * .8) { // multiply nav height by .8 so we move up the item
                                                // if it's more than 80% down the nav
       // scroll the item up by an amount equal to 80% the container nav's height
@@ -887,25 +1030,117 @@ function readCookie(cookie) {
   return 0;
 }
 
-function writeCookie(cookie, val, section, expiration) {
+function writeCookie(cookie, val, section) {
   if (val==undefined) return;
   section = section == null ? "_" : "_"+section+"_";
-  if (expiration == null) {
-    var date = new Date();
-    date.setTime(date.getTime()+(10*365*24*60*60*1000)); // default expiration is one week
-    expiration = date.toGMTString();
-  }
+  var age = 2*365*24*60*60; // set max-age to 2 years
   var cookieValue = cookie_namespace + section + cookie + "=" + val
-                    + "; expires=" + expiration+"; path=/";
+                    + "; max-age=" + age +"; path=/";
   document.cookie = cookieValue;
 }
 
 /* #########     END COOKIES!     ########## */
 
 
+var sticky = false;
+var stickyTop;
+var prevScrollLeft = 0; // used to compare current position to previous position of horiz scroll
+/* Sets the vertical scoll position at which the sticky bar should appear.
+   This method is called to reset the position when search results appear or hide */
+function setStickyTop() {
+  stickyTop = $('#header-wrapper').outerHeight() - $('#header > .dac-header-inner').outerHeight();
+}
 
+/*
+ * Displays sticky nav bar on pages when dac header scrolls out of view
+ */
+$(window).scroll(function(event) {
+  // Exit if the mouse target is a DIV, because that means the event is coming
+  // from a scrollable div and so there's no need to make adjustments to our layout
+  if ($(event.target).nodeName == "DIV") {
+    return;
+  }
 
+  checkSticky();
+});
 
+function checkSticky() {
+  setStickyTop();
+  var $headerEl = $('#header');
+  // Exit if there's no sidenav
+  if ($('#side-nav').length == 0) return;
+
+  var top = $(window).scrollTop();
+  // we set the navbar fixed when the scroll position is beyond the height of the site header...
+  var shouldBeSticky = top > stickyTop;
+  // ... except if the document content is shorter than the sidenav height.
+  // (this is necessary to avoid crazy behavior on OSX Lion due to overscroll bouncing)
+  if ($("#doc-col").height() < $("#side-nav").height()) {
+    shouldBeSticky = false;
+  }
+  // Nor on mobile
+  if (window.innerWidth < 720) {
+    shouldBeSticky = false;
+  }
+  // Account for horizontal scroll
+  var scrollLeft = $(window).scrollLeft();
+  // When the sidenav is fixed and user scrolls horizontally, reposition the sidenav to match
+  if (sticky && (scrollLeft != prevScrollLeft)) {
+    updateSideNavDimensions();
+    prevScrollLeft = scrollLeft;
+  }
+
+  // Don't continue if the header is sufficently far away
+  // (to avoid intensive resizing that slows scrolling)
+  if (sticky == shouldBeSticky) {
+    return;
+  }
+
+  // If sticky header visible and position is now near top, hide sticky
+  if (sticky && !shouldBeSticky) {
+    sticky = false;
+    // make the sidenav static again
+    $('#devdoc-nav')
+      .removeClass('fixed')
+      .css({'width':'auto','margin':''});
+    // delay hide the sticky
+    $headerEl.removeClass('is-sticky');
+
+    // update the sidenaav position for side scrolling
+    updateSideNavDimensions();
+  } else if (!sticky && shouldBeSticky) {
+    sticky = true;
+    $headerEl.addClass('is-sticky');
+
+    // make the sidenav fixed
+    $('#devdoc-nav')
+      .addClass('fixed');
+
+    // update the sidenaav position for side scrolling
+    updateSideNavDimensions();
+
+  }
+  resizeNav(250); // pass true in order to delay the scrollbar re-initialization for performance
+}
+
+/*
+ * Manages secion card states and nav resize to conclude loading
+ */
+(function() {
+  $(document).ready(function() {
+
+    // Stack hover states
+    $('.section-card-menu').each(function(index, el) {
+      var height = $(el).height();
+      $(el).css({height:height+'px', position:'relative'});
+      var $cardInfo = $(el).find('.card-info');
+
+      $cardInfo.css({position: 'absolute', bottom:'0px', left:'0px', right:'0px', overflow:'visible'});
+    });
+
+  });
+
+})();
 
 
 
@@ -972,8 +1207,16 @@ function hideNestedItems(list, toggle) {
 }
 
 
+/* Call this to add listeners to a <select> element for Studio/Eclipse/Other docs */
+function setupIdeDocToggle() {
+  $( "select.ide" ).change(function() {
+    var selected = $(this).find("option:selected").attr("value");
+    $(".select-ide").hide();
+    $(".select-ide."+selected).show();
 
-
+    $("select.ide").val(selected);
+  });
+}
 
 
 
@@ -1026,9 +1269,7 @@ function swapNav() {
     nav_pref = NAV_PREF_TREE;
     init_default_navtree(toRoot);
   }
-  var date = new Date();
-  date.setTime(date.getTime()+(10*365*24*60*60*1000)); // keep this for 10 years
-  writeCookie("nav", nav_pref, "reference", date.toGMTString());
+  writeCookie("nav", nav_pref, "reference");
 
   $("#nav-panels").toggle();
   $("#panel-link").toggle();
@@ -1085,22 +1326,18 @@ function requestAppendHL(uri) {
 
 
 function changeNavLang(lang) {
-  var $links = $("#devdoc-nav,#header,#nav-x,.training-nav-top,.content-footer").find("a["+lang+"-lang]");
-  $links.each(function(i){ // for each link with a translation
+  if (lang === 'en') { return; }
+
+  var $links = $("a[" + lang + "-lang],p[" + lang + "-lang]");
+  $links.each(function(){ // for each link with a translation
     var $link = $(this);
-    if (lang != "en") { // No need to worry about English, because a language change invokes new request
-      // put the desired language from the attribute as the text
-      $link.text($link.attr(lang+"-lang"))
-    }
+    // put the desired language from the attribute as the text
+    $link.text($link.attr(lang + '-lang'))
   });
 }
 
 function changeLangPref(lang, submit) {
-  var date = new Date();
-  expires = date.toGMTString(date.setTime(date.getTime()+(10*365*24*60*60*1000)));
-  // keep this for 50 years
-  //alert("expires: " + expires)
-  writeCookie("pref_lang", lang, null, expires);
+  writeCookie("pref_lang", lang, null);
 
   //  #######  TODO:  Remove this condition once we're stable on devsite #######
   //  This condition is only needed if we still need to support legacy GAE server
@@ -1149,7 +1386,7 @@ function toggleContent(obj) {
     $(".toggle-content-text:eq(0)", obj).toggle();
     div.removeClass("closed").addClass("open");
     $(".toggle-content-img:eq(0)", div).attr("title", "hide").attr("src", toRoot
-                  + "assets/images/triangle-opened.png");
+                  + "assets/images/styles/disclosure_up.png");
   } else { // if it's open, close it
     toggleMe.slideUp('fast', function() {  // Wait until the animation is done before closing arrow
       $(".toggle-content-text:eq(0)", obj).toggle();
@@ -1157,7 +1394,7 @@ function toggleContent(obj) {
       div.find(".toggle-content").removeClass("open").addClass("closed")
               .find(".toggle-content-toggleme").hide();
       $(".toggle-content-img", div).attr("title", "show").attr("src", toRoot
-                  + "assets/images/triangle-closed.png");
+                  + "assets/images/styles/disclosure_down.png");
     });
   }
   return false;
@@ -1519,8 +1756,8 @@ var gDocsListLength = 0;
 
 function onSuggestionClick(link) {
   // When user clicks a suggested document, track it
-  _gaq.push(['_trackEvent', 'Suggestion Click', 'clicked: ' + $(link).text(),
-            'from: ' + $("#search_autocomplete").val()]);
+  ga('send', 'event', 'Suggestion Click', 'clicked: ' + $(link).attr('href'),
+                'query: ' + $("#search_autocomplete").val().toLowerCase());
 }
 
 function set_item_selected($li, selected)
@@ -1537,6 +1774,13 @@ function set_item_values(toroot, $li, match)
     var $link = $('a',$li);
     $link.html(match.__hilabel || match.label);
     $link.attr('href',toroot + match.link);
+}
+
+function set_item_values_jd(toroot, $li, match)
+{
+    var $link = $('a',$li);
+    $link.html(match.title);
+    $link.attr('href',toroot + match.url);
 }
 
 function new_suggestion($list) {
@@ -1571,12 +1815,11 @@ function sync_selection_table(toroot)
     // if there are api results
     if ((gMatches.length > 0) || (gGoogleMatches.length > 0)) {
       // reveal suggestion list
-      $('.suggest-card.dummy').show();
       $('.suggest-card.reference').show();
       var listIndex = 0; // list index position
 
       // reset the lists
-      $(".search_filtered_wrapper.reference li").remove();
+      $(".suggest-card.reference li").remove();
 
       // ########### ANDROID RESULTS #############
       if (gMatches.length > 0) {
@@ -1606,15 +1849,17 @@ function sync_selection_table(toroot)
       }
     } else {
       $('.suggest-card.reference').hide();
-      $('.suggest-card.dummy').hide();
     }
 
     // ########### JD DOC RESULTS #############
     if (gDocsMatches.length > 0) {
         // reset the lists
-        $(".search_filtered_wrapper.docs li").remove();
+        $(".suggest-card:not(.reference) li").remove();
 
         // determine google results to show
+        // NOTE: The order of the conditions below for the sugg.type MUST BE SPECIFIC:
+        // The order must match the reverse order that each section appears as a card in
+        // the suggestion UI... this may be only for the "develop" grouped items though.
         gDocsListLength = gDocsMatches.length < ROW_COUNT_DOCS ? gDocsMatches.length : ROW_COUNT_DOCS;
         for (i=0; i<gDocsListLength; i++) {
             var sugg = gDocsMatches[i];
@@ -1625,16 +1870,19 @@ function sync_selection_table(toroot)
             if (sugg.type == "distribute") {
                 $li = new_suggestion($(".suggest-card.distribute ul"));
             } else
+            if (sugg.type == "samples") {
+                $li = new_suggestion($(".suggest-card.develop .child-card.samples"));
+            } else
             if (sugg.type == "training") {
                 $li = new_suggestion($(".suggest-card.develop .child-card.training"));
             } else
-            if (sugg.type == "guide"||"google") {
+            if (sugg.type == "about"||"guide"||"tools"||"google") {
                 $li = new_suggestion($(".suggest-card.develop .child-card.guides"));
             } else {
               continue;
             }
 
-            set_item_values(toroot, $li, sugg);
+            set_item_values_jd(toroot, $li, sugg);
             set_item_selected($li, i == gSelectedIndex);
         }
 
@@ -1659,6 +1907,10 @@ function sync_selection_table(toroot)
           $(".child-card.training").prepend("<li class='header'>Training:</li>");
           $(".child-card.training li").appendTo(".suggest-card.develop ul");
         }
+        if ($(".child-card.samples li").length > 0) {
+          $(".child-card.samples").prepend("<li class='header'>Samples:</li>");
+          $(".child-card.samples li").appendTo(".suggest-card.develop ul");
+        }
 
         if ($(".suggest-card.develop li").length > 0) {
           $(".suggest-card.develop").show(300);
@@ -1667,7 +1919,7 @@ function sync_selection_table(toroot)
         }
 
     } else {
-      $('.search_filtered_wrapper.docs .suggest-card:not(.dummy)').hide(300);
+      $('.suggest-card:not(.reference)').hide(300);
     }
 }
 
@@ -1681,6 +1933,7 @@ function sync_selection_table(toroot)
   */
 function search_changed(e, kd, toroot)
 {
+    var currentLang = getLangPref();
     var search = document.getElementById("search_autocomplete");
     var text = search.value.replace(/(^ +)|( +$)/g, '');
     // get the ul hosting the currently selected item
@@ -1690,14 +1943,14 @@ function search_changed(e, kd, toroot)
 
     // show/hide the close button
     if (text != '') {
-        $(".search .close").removeClass("hide");
+        $("#search-close").removeClass("hide");
     } else {
-        $(".search .close").addClass("hide");
+        $("#search-close").addClass("hide");
     }
     // 27 = esc
     if (e.keyCode == 27) {
         // close all search results
-        if (kd) $('.search .close').trigger('click');
+        if (kd) $('#search-close').trigger('click');
         return true;
     }
     // 13 = enter
@@ -1706,6 +1959,7 @@ function search_changed(e, kd, toroot)
             $('.suggest-card').hide();
             if ($("#searchResults").is(":hidden") && (search.value != "")) {
               // if results aren't showing (and text not empty), return true to allow search to execute
+              $('body,html').animate({scrollTop:0}, '500', 'swing');
               return true;
             } else {
               // otherwise, results are already showing, so allow ajax to auto refresh the results
@@ -1718,8 +1972,12 @@ function search_changed(e, kd, toroot)
             return false;
         }
     }
-    // Stop here if Google results are showing
+    // If Google results are showing, return true to allow ajax search to execute
     else if ($("#searchResults").is(":visible")) {
+        // Also, if search_results is scrolled out of view, scroll to top to make results visible
+        if ((sticky ) && (search.value != "")) {
+          $('body,html').animate({scrollTop:0}, '500', 'swing');
+        }
         return true;
     }
     // 38 UP ARROW
@@ -1794,8 +2052,8 @@ function search_changed(e, kd, toroot)
       }
     }
 
-    // if key-up event and not arrow down/up,
-    // read the search query and add suggestsions to gMatches
+    // if key-up event and not arrow down/up/left/right,
+    // read the search query and add suggestions to gMatches
     else if (!kd && (e.keyCode != 40)
                  && (e.keyCode != 38)
                  && (e.keyCode != 37)
@@ -1841,31 +2099,34 @@ function search_changed(e, kd, toroot)
 
 
 
-        // Search for JD docs
-        if (text.length >= 3) {
-          for (var i=0; i<JD_DATA.length; i++) {
-            // Regex to match only the beginning of a word
-            var textRegex = new RegExp("\\b" + text.toLowerCase(), "g");
+        // Search for matching JD docs
+        if (text.length >= 2) {
+          // match only the beginning of a word
+          var queryStr = text.toLowerCase();
+
+          // Search for Training classes
+          for (var i=0; i<TRAINING_RESOURCES.length; i++) {
             // current search comparison, with counters for tag and title,
             // used later to improve ranking
-            var s = JD_DATA[i];
+            var s = TRAINING_RESOURCES[i];
             s.matched_tag = 0;
             s.matched_title = 0;
             var matched = false;
 
             // Check if query matches any tags; work backwards toward 1 to assist ranking
-            for (var j = s.tags.length - 1; j >= 0; j--) {
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
               // it matches a tag
-              if (s.tags[j].toLowerCase().match(textRegex)) {
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
                 matched = true;
                 s.matched_tag = j + 1; // add 1 to index position
               }
             }
-            // Don't consider doc title for lessons (only for class landing pages)
-            // ...it is not a training lesson (or is but has matched a tag)
-            if (!(s.type == "training" && s.link.indexOf("index.html") == -1) || matched) {
+            // Don't consider doc title for lessons (only for class landing pages),
+            // unless the lesson has a tag that already matches
+            if ((s.lang == currentLang) &&
+                  (!(s.type == "training" && s.url.indexOf("index.html") == -1) || matched)) {
               // it matches the doc title
-              if (s.label.toLowerCase().match(textRegex)) {
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
                 matched = true;
                 s.matched_title = 1;
               }
@@ -1875,6 +2136,263 @@ function search_changed(e, kd, toroot)
               matchedCountDocs++;
             }
           }
+
+
+          // Search for API Guides
+          for (var i=0; i<GUIDE_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = GUIDE_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for Tools Guides
+          for (var i=0; i<TOOLS_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = TOOLS_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+                if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+                if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for About docs
+          for (var i=0; i<ABOUT_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = ABOUT_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for Design guides
+          for (var i=0; i<DESIGN_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = DESIGN_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for Distribute guides
+          for (var i=0; i<DISTRIBUTE_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = DISTRIBUTE_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for Google guides
+          for (var i=0; i<GOOGLE_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = GOOGLE_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+
+          // Search for Samples
+          for (var i=0; i<SAMPLES_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = SAMPLES_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title.t
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+          // Search for Preview Guides
+          for (var i=0; i<PREVIEW_RESOURCES.length; i++) {
+            // current search comparison, with counters for tag and title,
+            // used later to improve ranking
+            var s = PREVIEW_RESOURCES[i];
+            s.matched_tag = 0;
+            s.matched_title = 0;
+            var matched = false;
+
+            // Check if query matches any tags; work backwards toward 1 to assist ranking
+            for (var j = s.keywords.length - 1; j >= 0; j--) {
+              // it matches a tag
+              if (s.keywords[j].toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_tag = j + 1; // add 1 to index position
+              }
+            }
+            // Check if query matches the doc title, but only for current language
+            if (s.lang == currentLang) {
+              // if query matches the doc title
+              if (s.title.toLowerCase().indexOf(queryStr) == 0) {
+                matched = true;
+                s.matched_title = 1;
+              }
+            }
+            if (matched) {
+              gDocsMatches[matchedCountDocs] = s;
+              matchedCountDocs++;
+            }
+          }
+
+          // Rank/sort all the matched pages
           rank_autocomplete_doc_results(text, gDocsMatches);
         }
 
@@ -2021,214 +2539,313 @@ function search_focus_changed(obj, focused)
 {
     if (!focused) {
         if(obj.value == ""){
-          $(".search .close").addClass("hide");
+          $("#search-close").addClass("hide");
         }
         $(".suggest-card").hide();
     }
 }
 
 function submit_search() {
-  var query = document.getElementById('search_autocomplete').value;
+  var query = escapeHTML(document.getElementById('search_autocomplete').value);
   location.hash = 'q=' + query;
-  loadSearchResults();
-  $("#searchResults").slideDown('slow');
+  searchControl.query = query;
+  searchControl.init();
+  searchControl.trackSearchRequest(query);
+  $("#searchResults").slideDown('slow', setStickyTop);
   return false;
 }
 
-
 function hideResults() {
-  $("#searchResults").slideUp();
-  $(".search .close").addClass("hide");
+  $("#searchResults").slideUp('fast', setStickyTop);
+  $("#search-close").addClass("hide");
   location.hash = '';
 
   $("#search_autocomplete").val("").blur();
 
   // reset the ajax search callback to nothing, so results don't appear unless ENTER
-  searchControl.setSearchStartingCallback(this, function(control, searcher, query) {});
-
-  // forcefully regain key-up event control (previously jacked by search api)
-  $("#search_autocomplete").keyup(function(event) {
-    return search_changed(event, false, toRoot);
-  });
+  searchControl.reset();
 
   return false;
 }
 
-
-
 /* ########################################################## */
 /* ################  CUSTOM SEARCH ENGINE  ################## */
 /* ########################################################## */
+var searchControl = null;
+var dacsearch = dacsearch || {};
 
-var searchControl;
-google.load('search', '1', {"callback" : function() {
-            searchControl = new google.search.SearchControl();
-          } });
+/**
+ * The custom search engine API.
+ * @constructor
+ */
+dacsearch.CustomSearchEngine = function() {
+  /**
+   * The last response from Google CSE.
+   * @private {Object}
+   */
+  this.resultQuery_ = {};
 
-function loadSearchResults() {
-  document.getElementById("search_autocomplete").style.color = "#000";
+  /** @private {?Element} */
+  this.searchResultEl_ = null;
 
-  searchControl = new google.search.SearchControl();
+  /** @private {?Element} */
+  this.searchInputEl_ = null;
 
-  // use our existing search form and use tabs when multiple searchers are used
-  drawOptions = new google.search.DrawOptions();
-  drawOptions.setDrawMode(google.search.SearchControl.DRAW_MODE_TABBED);
-  drawOptions.setInput(document.getElementById("search_autocomplete"));
+  /** @private {string} */
+  this.query = '';
+};
 
-  // configure search result options
-  searchOptions = new google.search.SearcherOptions();
-  searchOptions.setExpandMode(GSearchControl.EXPAND_MODE_OPEN);
+/**
+ * Initializes DAC's Google custom search engine.
+ * @export
+ */
+dacsearch.CustomSearchEngine.prototype.init = function() {
+  this.searchResultEl_ = $('#leftSearchControl');
+  this.searchResultEl_.empty();
+  this.searchInputEl_ = $('#search_autocomplete');
+  this.searchInputEl_.focus().val(this.query);
+  this.getResults_();
+  this.bindEvents_();
+};
 
-  // configure each of the searchers, for each tab
-  devSiteSearcher = new google.search.WebSearch();
-  devSiteSearcher.setUserDefinedLabel("All");
-  devSiteSearcher.setSiteRestriction("001482626316274216503:zu90b7s047u");
 
-  designSearcher = new google.search.WebSearch();
-  designSearcher.setUserDefinedLabel("Design");
-  designSearcher.setSiteRestriction("http://developer.android.com/design/");
+/**
+ * Binds the keyup event to the search input.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.bindEvents_ = function() {
+  this.searchInputEl_.keyup(this.debounce_(function(e) {
+    var code = e.which;
+    if (code != 13) {
+      this.query = escapeHTML(this.searchInputEl_.val());
+      location.hash = 'q=' + encodeURI(this.query);
+      this.searchResultEl_.empty();
+      this.getResults_();
+    }
+  }.bind(this), 250));
+};
 
-  trainingSearcher = new google.search.WebSearch();
-  trainingSearcher.setUserDefinedLabel("Training");
-  trainingSearcher.setSiteRestriction("http://developer.android.com/training/");
 
-  guidesSearcher = new google.search.WebSearch();
-  guidesSearcher.setUserDefinedLabel("Guides");
-  guidesSearcher.setSiteRestriction("http://developer.android.com/guide/");
+/**
+ * Resets the search control.
+ */
+dacsearch.CustomSearchEngine.prototype.reset = function() {
+  this.query = '';
+  this.searchInputEl_.off('keyup');
+  this.searchResultEl_.empty();
+  this.updateResultTitle_();
+};
 
-  referenceSearcher = new google.search.WebSearch();
-  referenceSearcher.setUserDefinedLabel("Reference");
-  referenceSearcher.setSiteRestriction("http://developer.android.com/reference/");
 
-  googleSearcher = new google.search.WebSearch();
-  googleSearcher.setUserDefinedLabel("Google Services");
-  googleSearcher.setSiteRestriction("http://developer.android.com/google/");
+/**
+ * Updates the search query text at the top of the results.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.updateResultTitle_ = function() {
+  $("#searchTitle").html("Results for <em>" + this.query + "</em>");
+};
 
-  blogSearcher = new google.search.WebSearch();
-  blogSearcher.setUserDefinedLabel("Blog");
-  blogSearcher.setSiteRestriction("http://android-developers.blogspot.com");
 
-  // add each searcher to the search control
-  searchControl.addSearcher(devSiteSearcher, searchOptions);
-  searchControl.addSearcher(designSearcher, searchOptions);
-  searchControl.addSearcher(trainingSearcher, searchOptions);
-  searchControl.addSearcher(guidesSearcher, searchOptions);
-  searchControl.addSearcher(referenceSearcher, searchOptions);
-  searchControl.addSearcher(googleSearcher, searchOptions);
-  searchControl.addSearcher(blogSearcher, searchOptions);
+/**
+ * Makes the CSE api call and gets the results.
+ * @param {number=} opt_start The optional start index.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.getResults_ = function(opt_start) {
+  var lang = getLangPref();
+  // Fix zh-cn to be zh-CN.
+  lang = lang.replace(/-\w+/, function(m) { return m.toUpperCase(); });
+  var cseUrl = 'https://content.googleapis.com/customsearch/v1?';
+  var searchParams = {
+    cx: '000521750095050289010:zpcpi1ea4s8',
+    key: 'AIzaSyCFhbGnjW06dYwvRCU8h_zjdpS4PYYbEe8',
+    q: this.query,
+    start: opt_start || 1,
+    num: 6,
+    hl: lang,
+    fields: 'queries,items(pagemap,link,title,htmlSnippet,formattedUrl)'
+  };
 
-  // configure result options
-  searchControl.setResultSetSize(google.search.Search.LARGE_RESULTSET);
-  searchControl.setLinkTarget(google.search.Search.LINK_TARGET_SELF);
-  searchControl.setTimeoutInterval(google.search.SearchControl.TIMEOUT_SHORT);
-  searchControl.setNoResultsString(google.search.SearchControl.NO_RESULTS_DEFAULT_STRING);
+  $.get(cseUrl + $.param(searchParams), function(data) {
+    this.resultQuery_ = data;
+    this.renderResults_(data);
+    this.updateResultTitle_(this.query);
+  }.bind(this));
+};
 
-  // upon ajax search, refresh the url and search title
-  searchControl.setSearchStartingCallback(this, function(control, searcher, query) {
-    updateResultTitle(query);
-    var query = document.getElementById('search_autocomplete').value;
-    location.hash = 'q=' + query;
-  });
 
-  // once search results load, set up click listeners
-  searchControl.setSearchCompleteCallback(this, function(control, searcher, query) {
-    addResultClickListeners();
-  });
+/**
+ * Renders the results.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.renderResults_ = function(results) {
+  var el = this.searchResultEl_;
 
-  // draw the search results box
-  searchControl.draw(document.getElementById("leftSearchControl"), drawOptions);
+  if (!results.items) {
+    el.append($('<div>').text('No results'));
+    return;
+  }
 
-  // get query and execute the search
-  searchControl.execute(decodeURI(getQuery(location.hash)));
+  for (var i = 0; i < results.items.length; i++) {
+    var item = results.items[i];
+    var hasImage = item.pagemap && item.pagemap.cse_thumbnail;
+    var sectionMatch = item.link.match(/developer\.android\.com\/(\w*)/);
+    var section = (sectionMatch && sectionMatch[1]) || 'blog';
 
-  document.getElementById("search_autocomplete").focus();
-  addTabListeners();
-}
-// End of loadSearchResults
+    var entry = $('<div>').addClass('dac-custom-search-entry cols');
+
+    if (hasImage) {
+      var image = item.pagemap.cse_thumbnail[0];
+      entry.append($('<div>').addClass('col-1of6')
+        .append($('<div>').addClass('dac-custom-search-image').css(
+        'background-image', 'url(' + image.src + ')')));
+    }
+
+    var linkTitleEl = $('<a>').text(item.title).attr('href', item.link);
+    linkTitleEl.click(function(e) {
+      ga('send', 'event', 'Google Custom Search',
+          'clicked: ' + linkTitleEl.attr('href'),
+          'query: ' + $("#search_autocomplete").val().toLowerCase());
+    });
+
+    var linkUrlEl = $('<a>').addClass('dac-custom-search-link').text(
+        item.formattedUrl).attr('href', item.link);
+    linkUrlEl.click(function(e) {
+      ga('send', 'event', 'Google Custom Search',
+          'clicked: ' + linkUrlEl.attr('href'),
+          'query: ' + $("#search_autocomplete").val().toLowerCase());
+    });
+
+
+    entry.append($('<div>').addClass(hasImage ? 'col-5of6' : 'col-6of6')
+      .append($('<p>').addClass('dac-custom-search-section').text(section))
+      .append(
+        linkTitleEl.wrap('<h2>').parent().addClass('dac-custom-search-title'))
+      .append($('<p>').addClass('dac-custom-search-snippet')
+      .html(item.htmlSnippet.replace(/<br>/g, ''))).append(linkUrlEl));
+
+    el.append(entry);
+  }
+
+  if ($('#dac-custom-search-load-more')) {
+    $('#dac-custom-search-load-more').remove();
+  }
+
+  if (results.queries.nextPage) {
+    var loadMoreButton = $('<button id="dac-custom-search-load-more">')
+      .addClass('dac-custom-search-load-more')
+      .text('Load more')
+      .click(function() {
+        this.loadMoreResults_();
+      }.bind(this));
+
+    el.append(loadMoreButton);
+  }
+};
+
+
+/**
+ * Loads more results.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.loadMoreResults_ = function() {
+  this.query = this.resultQuery_.queries.request[0].searchTerms;
+  var start = this.resultQuery_.queries.nextPage[0].startIndex;
+  var loadMoreButton = this.searchResultEl_.find(
+      '#dac-custom-search-load-more');
+  loadMoreButton.text('Loading more...');
+  this.getResults_(start);
+  this.trackSearchRequest(this.query + ' startIndex = ' + start);
+};
+
+
+/**
+ * Tracks a search request.
+ * @param {string} query The query for the request,
+ *                       includes start index if loading more results.
+ */
+dacsearch.CustomSearchEngine.prototype.trackSearchRequest = function(query) {
+  ga('send', 'event', 'Google Custom Search Submit', 'submit search query',
+      'query: ' + query);
+};
+
+
+/**
+ * Returns a function, that, as long as it continues to be invoked, will not
+ * be triggered. The function will be called after it stops being called for
+ * N milliseconds.
+ * @param {Function} func The function to debounce.
+ * @param {number} wait The number of milliseconds to wait before calling the function.
+ * @private
+ */
+dacsearch.CustomSearchEngine.prototype.debounce_ = function(func, wait) {
+  var timeout;
+  return function() {
+    var context = this, args = arguments;
+    var later = function() {
+      timeout = null;
+      func.apply(context, args);
+    };
+   clearTimeout(timeout);
+   timeout = setTimeout(later, wait);
+  };
+};
 
 
 google.setOnLoadCallback(function(){
+  searchControl = new dacsearch.CustomSearchEngine();
   if (location.hash.indexOf("q=") == -1) {
     // if there's no query in the url, don't search and make sure results are hidden
     $('#searchResults').hide();
     return;
   } else {
     // first time loading search results for this page
-    $('#searchResults').slideDown('slow');
-    $(".search .close").removeClass("hide");
-    loadSearchResults();
+    searchControl.query = escapeHTML(decodeURI(location.hash.split('q=')[1]));
+    searchControl.init();
+    searchControl.trackSearchRequest(searchControl.query);
+    $('#searchResults').slideDown('slow', setStickyTop);
+    $("#search-close").removeClass("hide");
   }
 }, true);
 
+/* Adjust the scroll position to account for sticky header, only if the hash matches an id.
+   This does not handle <a name=""> tags. Some CSS fixes those, but only for reference docs. */
+function offsetScrollForSticky() {
+  // Ignore if there's no search bar (some special pages have no header)
+  if ($("#search-container").length < 1) return;
+
+  var hash = escape(location.hash.substr(1));
+  var $matchingElement = $("#"+hash);
+  // Sanity check that there's an element with that ID on the page
+  if ($matchingElement.length) {
+    // If the position of the target element is near the top of the page (<20px, where we expect it
+    // to be because we need to move it down 60px to become in view), then move it down 60px
+    if (Math.abs($matchingElement.offset().top - $(window).scrollTop()) < 20) {
+      $(window).scrollTop($(window).scrollTop() - 60);
+    }
+  }
+}
+
 // when an event on the browser history occurs (back, forward, load) requery hash and do search
 $(window).hashchange( function(){
-  // Exit if the hash isn't a search query or there's an error in the query
-  if ((location.hash.indexOf("q=") == -1) || (query == "undefined")) {
+  // Ignore if there's no search bar (some special pages have no header)
+  if ($("#search-container").length < 1) return;
+
+  // If the hash isn't a search query or there's an error in the query,
+  // then adjust the scroll position to account for sticky header, then exit.
+  if ((location.hash.indexOf("q=") == -1) || (searchControl.query == "undefined")) {
     // If the results pane is open, close it.
     if (!$("#searchResults").is(":hidden")) {
       hideResults();
     }
+    offsetScrollForSticky();
     return;
   }
 
-  // Otherwise, we have a search to do
-  var query = decodeURI(getQuery(location.hash));
-  searchControl.execute(query);
-  $('#searchResults').slideDown('slow');
+  $('#searchResults').slideDown('slow', setStickyTop);
   $("#search_autocomplete").focus();
-  $(".search .close").removeClass("hide");
-
-  updateResultTitle(query);
+  $("#search-close").removeClass("hide");
 });
-
-function updateResultTitle(query) {
-  $("#searchTitle").html("Results for <em>" + escapeHTML(query) + "</em>");
-}
-
-// forcefully regain key-up event control (previously jacked by search api)
-$("#search_autocomplete").keyup(function(event) {
-  return search_changed(event, false, toRoot);
-});
-
-// add event listeners to each tab so we can track the browser history
-function addTabListeners() {
-  var tabHeaders = $(".gsc-tabHeader");
-  for (var i = 0; i < tabHeaders.length; i++) {
-    $(tabHeaders[i]).attr("id",i).click(function() {
-    /*
-      // make a copy of the page numbers for the search left pane
-      setTimeout(function() {
-        // remove any residual page numbers
-        $('#searchResults .gsc-tabsArea .gsc-cursor-box.gs-bidi-start-align').remove();
-        // move the page numbers to the left position; make a clone,
-        // because the element is drawn to the DOM only once
-        // and because we're going to remove it (previous line),
-        // we need it to be available to move again as the user navigates
-        $('#searchResults .gsc-webResult .gsc-cursor-box.gs-bidi-start-align:visible')
-                        .clone().appendTo('#searchResults .gsc-tabsArea');
-        }, 200);
-      */
-    });
-  }
-  setTimeout(function(){$(tabHeaders[0]).click()},200);
-}
-
-// add analytics tracking events to each result link
-function addResultClickListeners() {
-  $("#searchResults a.gs-title").each(function(index, link) {
-    // When user clicks enter for Google search results, track it
-    $(link).click(function() {
-      _gaq.push(['_trackEvent', 'Google Click', 'clicked: ' + $(this).text(),
-                'from: ' + $("#search_autocomplete").val()]);
-    });
-  });
-}
-
-
-function getQuery(hash) {
-  var queryParts = hash.split('=');
-  return queryParts[1];
-}
 
 /* returns the given string with all HTML brackets converted to entities
     TODO: move this to the site's JS library */
@@ -2282,7 +2899,7 @@ var maxLevel = 1;
   }
 
 function updateSidenavFixedWidth() {
-  if (!navBarIsFixed) return;
+  if (!sticky) return;
   $('#devdoc-nav').css({
     'width' : $('#side-nav').css('width'),
     'margin' : $('#side-nav').css('margin')
@@ -2293,7 +2910,7 @@ function updateSidenavFixedWidth() {
 }
 
 function updateSidenavFullscreenWidth() {
-  if (!navBarIsFixed) return;
+  if (!sticky) return;
   $('#devdoc-nav').css({
     'width' : $('#side-nav').css('width'),
     'margin' : $('#side-nav').css('margin')
@@ -2334,10 +2951,7 @@ function changeApiLevel() {
   selectedLevel = parseInt($("#apiLevelSelector option:selected").val());
   toggleVisisbleApis(selectedLevel, "body");
 
-  var date = new Date();
-  date.setTime(date.getTime()+(10*365*24*60*60*1000)); // keep this for 10 years
-  var expiration = date.toGMTString();
-  writeCookie(API_LEVEL_COOKIE, selectedLevel, null, expiration);
+  writeCookie(API_LEVEL_COOKIE, selectedLevel, null);
 
   if (selectedLevel < minLevel) {
     var thing = ($("#jd-header").html().indexOf("package") != -1) ? "package" : "class";
@@ -2382,7 +2996,8 @@ function toggleVisisbleApis(selectedLevel, context) {
     // Grey things out that aren't available and give a tooltip title
     if (apiLevelNum > selectedLevelNum) {
       obj.addClass("absent").attr("title","Requires API Level \""
-            + apiLevel + "\" or higher");
+            + apiLevel + "\" or higher. To reveal, change the target API level "
+              + "above the left navigation.");
     }
     else obj.removeClass("absent").removeAttr("title");
   });
@@ -2610,6 +3225,10 @@ function init_google_navtree(navtree_id, toroot, root_nodes)
   me.node = new Object();
 
   me.node.li = document.getElementById(navtree_id);
+  if (!me.node.li) {
+    return;
+  }
+
   me.node.children_data = root_nodes;
   me.node.children = new Array();
   me.node.children_ul = document.createElement("ul");
@@ -2828,13 +3447,13 @@ function toggleInherited(linkObj, expand) {
     if ( (expand == null && a.hasClass("closed")) || expand ) {
         list.style.display = "none";
         summary.style.display = "block";
-        trigger.src = toRoot + "assets/images/triangle-opened.png";
+        trigger.src = toRoot + "assets/images/styles/disclosure_up.png";
         a.removeClass("closed");
         a.addClass("opened");
     } else if ( (expand == null && a.hasClass("opened")) || (expand == false) ) {
         list.style.display = "block";
         summary.style.display = "none";
-        trigger.src = toRoot + "assets/images/triangle-closed.png";
+        trigger.src = toRoot + "assets/images/styles/disclosure_down.png";
         a.removeClass("opened");
         a.addClass("closed");
     }
@@ -2985,3 +3604,1774 @@ function showSamples() {
   $("#samples").append($ul);
 
 }
+
+
+
+/* ########################################################## */
+/* ###################  RESOURCE CARDS  ##################### */
+/* ########################################################## */
+
+/** Handle resource queries, collections, and grids (sections). Requires
+    jd_tag_helpers.js and the *_unified_data.js to be loaded. */
+
+(function() {
+  // Prevent the same resource from being loaded more than once per page.
+  var addedPageResources = {};
+
+  $(document).ready(function() {
+    // Need to initialize hero carousel before other sections for dedupe
+    // to work correctly.
+    $('[data-carousel-query]').dacCarouselQuery();
+
+    $('.resource-widget').each(function() {
+      initResourceWidget(this);
+    });
+
+    /* Pass the line height to ellipsisfade() to adjust the height of the
+    text container to show the max number of lines possible, without
+    showing lines that are cut off. This works with the css ellipsis
+    classes to fade last text line and apply an ellipsis char. */
+
+    //card text currently uses 20px line height.
+    var lineHeight = 20;
+    $('.card-info .text').ellipsisfade(lineHeight);
+  });
+
+  /*
+    Three types of resource layouts:
+    Flow - Uses a fixed row-height flow using float left style.
+    Carousel - Single card slideshow all same dimension absolute.
+    Stack - Uses fixed columns and flexible element height.
+  */
+  function initResourceWidget(widget) {
+    var $widget = $(widget);
+    var isFlow = $widget.hasClass('resource-flow-layout'),
+        isCarousel = $widget.hasClass('resource-carousel-layout'),
+        isStack = $widget.hasClass('resource-stack-layout');
+
+    // remove illegal col-x class which is not relevant anymore thanks to responsive styles.
+    var m = $widget.get(0).className.match(/\bcol-(\d+)\b/);
+    if (m && !$widget.is('.cols > *')) {
+      $widget.removeClass('col-' + m[1]);
+    }
+
+    var opts = {
+      cardSizes: ($widget.data('cardsizes') || '').split(','),
+      maxResults: parseInt($widget.data('maxresults') || '100', 10),
+      initialResults: $widget.data('initialResults'),
+      itemsPerPage: $widget.data('itemsperpage'),
+      sortOrder: $widget.data('sortorder'),
+      query: $widget.data('query'),
+      section: $widget.data('section'),
+      /* Added by LFL 6/6/14 */
+      resourceStyle: $widget.data('resourcestyle') || 'card',
+      stackSort: $widget.data('stacksort') || 'true'
+    };
+
+    // run the search for the set of resources to show
+
+    var resources = buildResourceList(opts);
+
+    if (isFlow) {
+      drawResourcesFlowWidget($widget, opts, resources);
+    } else if (isCarousel) {
+      drawResourcesCarouselWidget($widget, opts, resources);
+    } else if (isStack) {
+      /* Looks like this got removed and is not used, so repurposing for the
+          homepage style layout.
+          Modified by LFL 6/6/14
+      */
+      //var sections = buildSectionList(opts);
+      opts['numStacks'] = $widget.data('numstacks');
+      drawResourcesStackWidget($widget, opts, resources/*, sections*/);
+    }
+  }
+
+  /* Initializes a Resource Carousel Widget */
+  function drawResourcesCarouselWidget($widget, opts, resources) {
+    $widget.empty();
+    var plusone = false; // stop showing plusone buttons on cards
+
+    $widget.addClass('resource-card slideshow-container')
+      .append($('<a>').addClass('slideshow-prev').text('Prev'))
+      .append($('<a>').addClass('slideshow-next').text('Next'));
+
+    var css = { 'width': $widget.width() + 'px',
+                'height': $widget.height() + 'px' };
+
+    var $ul = $('<ul>');
+
+    for (var i = 0; i < resources.length; ++i) {
+      var $card = $('<a>')
+        .attr('href', cleanUrl(resources[i].url))
+        .decorateResourceCard(resources[i],plusone);
+
+      $('<li>').css(css)
+          .append($card)
+          .appendTo($ul);
+    }
+
+    $('<div>').addClass('frame')
+      .append($ul)
+      .appendTo($widget);
+
+    $widget.dacSlideshow({
+      auto: true,
+      btnPrev: '.slideshow-prev',
+      btnNext: '.slideshow-next'
+    });
+  };
+
+  /* Initializes a Resource Card Stack Widget (column-based layout)
+     Modified by LFL 6/6/14
+   */
+  function drawResourcesStackWidget($widget, opts, resources, sections) {
+    // Don't empty widget, grab all items inside since they will be the first
+    // items stacked, followed by the resource query
+    var plusone = false; // stop showing plusone buttons on cards
+    var cards = $widget.find('.resource-card').detach().toArray();
+    var numStacks = opts.numStacks || 1;
+    var $stacks = [];
+    var urlString;
+
+    for (var i = 0; i < numStacks; ++i) {
+      $stacks[i] = $('<div>').addClass('resource-card-stack')
+          .appendTo($widget);
+    }
+
+    var sectionResources = [];
+
+    // Extract any subsections that are actually resource cards
+    if (sections) {
+      for (var i = 0; i < sections.length; ++i) {
+        if (!sections[i].sections || !sections[i].sections.length) {
+          // Render it as a resource card
+          sectionResources.push(
+            $('<a>')
+              .addClass('resource-card section-card')
+              .attr('href', cleanUrl(sections[i].resource.url))
+              .decorateResourceCard(sections[i].resource,plusone)[0]
+          );
+
+        } else {
+          cards.push(
+            $('<div>')
+              .addClass('resource-card section-card-menu')
+              .decorateResourceSection(sections[i],plusone)[0]
+          );
+        }
+      }
+    }
+
+    cards = cards.concat(sectionResources);
+
+    for (var i = 0; i < resources.length; ++i) {
+      var $card = createResourceElement(resources[i], opts);
+
+      if (opts.resourceStyle.indexOf('related') > -1) {
+        $card.addClass('related-card');
+      }
+
+      cards.push($card[0]);
+    }
+
+    if (opts.stackSort != 'false') {
+      for (var i = 0; i < cards.length; ++i) {
+        // Find the stack with the shortest height, but give preference to
+        // left to right order.
+        var minHeight = $stacks[0].height();
+        var minIndex = 0;
+
+        for (var j = 1; j < numStacks; ++j) {
+          var height = $stacks[j].height();
+          if (height < minHeight - 45) {
+            minHeight = height;
+            minIndex = j;
+          }
+        }
+
+        $stacks[minIndex].append($(cards[i]));
+      }
+    }
+
+  };
+
+  /*
+    Create a resource card using the given resource object and a list of html
+     configured options. Returns a jquery object containing the element.
+  */
+  function createResourceElement(resource, opts, plusone) {
+    var $el;
+
+    // The difference here is that generic cards are not entirely clickable
+    // so its a div instead of an a tag, also the generic one is not given
+    // the resource-card class so it appears with a transparent background
+    // and can be styled in whatever way the css setup.
+    if (opts.resourceStyle == 'generic') {
+      $el = $('<div>')
+        .addClass('resource')
+        .attr('href', cleanUrl(resource.url))
+        .decorateResource(resource, opts);
+    } else {
+      var cls = 'resource resource-card';
+
+      $el = $('<a>')
+        .addClass(cls)
+        .attr('href', cleanUrl(resource.url))
+        .decorateResourceCard(resource, plusone);
+    }
+
+    return $el;
+  }
+
+  function createResponsiveFlowColumn(cardSize) {
+    var cardWidth = parseInt(cardSize.match(/(\d+)/)[1], 10);
+    var column = $('<div>').addClass('col-' + (cardWidth / 3) + 'of6');
+    if (cardWidth < 9) {
+      column.addClass('col-tablet-1of2');
+    } else if (cardWidth > 9 && cardWidth < 18) {
+      column.addClass('col-tablet-1of1');
+    }
+    if (cardWidth < 18) {
+      column.addClass('col-mobile-1of1')
+    }
+    return column;
+  }
+
+  /* Initializes a flow widget, see distribute.scss for generating accompanying css */
+  function drawResourcesFlowWidget($widget, opts, resources) {
+    $widget.empty().addClass('cols');
+    var cardSizes = opts.cardSizes || ['6x6'];
+    var initialResults = opts.initialResults || resources.length;
+    var i = 0, j = 0;
+    var plusone = false; // stop showing plusone buttons on cards
+    var cardParent = $widget;
+
+    while (i < resources.length) {
+
+      if (i === initialResults && initialResults < resources.length) {
+        // Toggle remaining cards
+        cardParent = $('<div class="dac-toggle-content clearfix">').appendTo($widget);
+        $widget.addClass('dac-toggle');
+        $('<div class="col-1of1 dac-section-links dac-text-center">')
+          .append(
+            $('<div class="dac-section-link" data-toggle="section">')
+              .append('<span class="dac-toggle-expand">More<i class="dac-sprite dac-auto-unfold-more"></i></span>')
+              .append('<span class="dac-toggle-collapse">Less<i class="dac-sprite dac-auto-unfold-less"></i></span>')
+          )
+          .appendTo($widget)
+      }
+
+      var cardSize = cardSizes[j++ % cardSizes.length];
+      cardSize = cardSize.replace(/^\s+|\s+$/,'');
+
+      var column = createResponsiveFlowColumn(cardSize).appendTo(cardParent);
+
+      // A stack has a third dimension which is the number of stacked items
+      var isStack = cardSize.match(/(\d+)x(\d+)x(\d+)/);
+      var stackCount = 0;
+      var $stackDiv = null;
+
+      if (isStack) {
+        // Create a stack container which should have the dimensions defined
+        // by the product of the items inside.
+        $stackDiv = $('<div>').addClass('resource-card-stack resource-card-' + isStack[1]
+            + 'x' + isStack[2] * isStack[3]) .appendTo(column);
+      }
+
+      // Build each stack item or just a single item
+      do {
+        var resource = resources[i];
+
+        var $card = createResourceElement(resources[i], opts, plusone);
+
+        $card.addClass('resource-card-' + cardSize +
+          ' resource-card-' + resource.type);
+
+        if (isStack) {
+          $card.addClass('resource-card-' + isStack[1] + 'x' + isStack[2]);
+          if (++stackCount == parseInt(isStack[3])) {
+            $card.addClass('resource-card-row-stack-last');
+            stackCount = 0;
+          }
+        } else {
+          stackCount = 0;
+        }
+
+        $card.appendTo($stackDiv || column);
+
+      } while (++i < resources.length && stackCount > 0);
+    }
+  }
+
+  /* Build a site map of resources using a section as a root. */
+  function buildSectionList(opts) {
+    if (opts.section && SECTION_BY_ID[opts.section]) {
+      return SECTION_BY_ID[opts.section].sections || [];
+    }
+    return [];
+  }
+
+  function buildResourceList(opts) {
+    return $.queryResources(opts);
+  }
+
+  $.queryResources = function(opts) {
+    var maxResults = opts.maxResults || 100;
+
+    var query = opts.query || '';
+    var expressions = parseResourceQuery(query);
+    var addedResourceIndices = {};
+    var results = [];
+
+    for (var i = 0; i < expressions.length; i++) {
+      var clauses = expressions[i];
+
+      // build initial set of resources from first clause
+      var firstClause = clauses[0];
+      var resources = [];
+      switch (firstClause.attr) {
+        case 'type':
+          resources = ALL_RESOURCES_BY_TYPE[firstClause.value];
+          break;
+        case 'lang':
+          resources = ALL_RESOURCES_BY_LANG[firstClause.value];
+          break;
+        case 'tag':
+          resources = ALL_RESOURCES_BY_TAG[firstClause.value];
+          break;
+        case 'collection':
+          var urls = RESOURCE_COLLECTIONS[firstClause.value].resources || [];
+          resources = urls.map(function(url){ return ALL_RESOURCES_BY_URL[url]; });
+          break;
+        case 'section':
+          var urls = SITE_MAP[firstClause.value].sections || [];
+          resources = urls.map(function(url){ return ALL_RESOURCES_BY_URL[url]; });
+          break;
+      }
+      // console.log(firstClause.attr + ':' + firstClause.value);
+      resources = resources || [];
+
+      // use additional clauses to filter corpus
+      if (clauses.length > 1) {
+        var otherClauses = clauses.slice(1);
+        resources = resources.filter(getResourceMatchesClausesFilter(otherClauses));
+      }
+
+      // filter out resources already added
+      if (i > 1) {
+        resources = resources.filter(getResourceNotAlreadyAddedFilter(addedResourceIndices));
+      }
+
+      // add to list of already added indices
+      for (var j = 0; j < resources.length; j++) {
+        if (resources[j]) {
+          addedResourceIndices[resources[j].index] = 1;
+        }
+      }
+
+      // concat to final results list
+      results = results.concat(resources);
+    }
+
+    if (opts.sortOrder && results.length) {
+      var attr = opts.sortOrder;
+
+      if (opts.sortOrder == 'random') {
+        var i = results.length, j, temp;
+        while (--i) {
+          j = Math.floor(Math.random() * (i + 1));
+          temp = results[i];
+          results[i] = results[j];
+          results[j] = temp;
+        }
+      } else {
+        var desc = attr.charAt(0) == '-';
+        if (desc) {
+          attr = attr.substring(1);
+        }
+        results = results.sort(function(x,y) {
+          return (desc ? -1 : 1) * (parseInt(x[attr], 10) - parseInt(y[attr], 10));
+        });
+      }
+    }
+
+    results = results.filter(getResourceNotAlreadyAddedFilter(addedPageResources));
+    results = results.slice(0, maxResults);
+
+    for (var j = 0; j < results.length; ++j) {
+      addedPageResources[results[j].index] = 1;
+    }
+
+    return results;
+  }
+
+
+  function getResourceNotAlreadyAddedFilter(addedResourceIndices) {
+    return function(resource) {
+      return resource && !addedResourceIndices[resource.index];
+    };
+  }
+
+
+  function getResourceMatchesClausesFilter(clauses) {
+    return function(resource) {
+      return doesResourceMatchClauses(resource, clauses);
+    };
+  }
+
+
+  function doesResourceMatchClauses(resource, clauses) {
+    for (var i = 0; i < clauses.length; i++) {
+      var map;
+      switch (clauses[i].attr) {
+        case 'type':
+          map = IS_RESOURCE_OF_TYPE[clauses[i].value];
+          break;
+        case 'lang':
+          map = IS_RESOURCE_IN_LANG[clauses[i].value];
+          break;
+        case 'tag':
+          map = IS_RESOURCE_TAGGED[clauses[i].value];
+          break;
+      }
+
+      if (!map || (!!clauses[i].negative ? map[resource.index] : !map[resource.index])) {
+        return clauses[i].negative;
+      }
+    }
+    return true;
+  }
+
+  function cleanUrl(url)
+  {
+    if (url && url.indexOf('//') === -1) {
+      url = toRoot + url;
+    }
+
+    return url;
+  }
+
+
+  function parseResourceQuery(query) {
+    // Parse query into array of expressions (expression e.g. 'tag:foo + type:video')
+    var expressions = [];
+    var expressionStrs = query.split(',') || [];
+    for (var i = 0; i < expressionStrs.length; i++) {
+      var expr = expressionStrs[i] || '';
+
+      // Break expression into clauses (clause e.g. 'tag:foo')
+      var clauses = [];
+      var clauseStrs = expr.split(/(?=[\+\-])/);
+      for (var j = 0; j < clauseStrs.length; j++) {
+        var clauseStr = clauseStrs[j] || '';
+
+        // Get attribute and value from clause (e.g. attribute='tag', value='foo')
+        var parts = clauseStr.split(':');
+        var clause = {};
+
+        clause.attr = parts[0].replace(/^\s+|\s+$/g,'');
+        if (clause.attr) {
+          if (clause.attr.charAt(0) == '+') {
+            clause.attr = clause.attr.substring(1);
+          } else if (clause.attr.charAt(0) == '-') {
+            clause.negative = true;
+            clause.attr = clause.attr.substring(1);
+          }
+        }
+
+        if (parts.length > 1) {
+          clause.value = parts[1].replace(/^\s+|\s+$/g,'');
+        }
+
+        clauses.push(clause);
+      }
+
+      if (!clauses.length) {
+        continue;
+      }
+
+      expressions.push(clauses);
+    }
+
+    return expressions;
+  }
+})();
+
+(function($) {
+
+  /*
+    Utility method for creating dom for the description area of a card.
+    Used in decorateResourceCard and decorateResource.
+  */
+  function buildResourceCardDescription(resource, plusone) {
+    var $description = $('<div>').addClass('description ellipsis');
+
+    $description.append($('<div>').addClass('text').html(resource.summary));
+
+    if (resource.cta) {
+      $description.append($('<a>').addClass('cta').html(resource.cta));
+    }
+
+    if (plusone) {
+      var plusurl = resource.url.indexOf("//") > -1 ? resource.url :
+        "//developer.android.com/" + resource.url;
+
+      $description.append($('<div>').addClass('util')
+        .append($('<div>').addClass('g-plusone')
+          .attr('data-size', 'small')
+          .attr('data-align', 'right')
+          .attr('data-href', plusurl)));
+    }
+
+    return $description;
+  }
+
+
+  /* Simple jquery function to create dom for a standard resource card */
+  $.fn.decorateResourceCard = function(resource,plusone) {
+    var section = resource.group || resource.type;
+    var imgUrl = resource.image ||
+      'assets/images/resource-card-default-android.jpg';
+
+    if (imgUrl.indexOf('//') === -1) {
+      imgUrl = toRoot + imgUrl;
+    }
+
+    if (resource.type === 'youtube') {
+      $('<div>').addClass('play-button')
+        .append($('<i class="dac-sprite dac-play-white">'))
+        .appendTo(this);
+    }
+
+    $('<div>').addClass('card-bg')
+      .css('background-image', 'url(' + (imgUrl || toRoot +
+        'assets/images/resource-card-default-android.jpg') + ')')
+      .appendTo(this);
+
+    $('<div>').addClass('card-info' + (!resource.summary ? ' empty-desc' : ''))
+      .append($('<div>').addClass('section').text(section))
+      .append($('<div>').addClass('title').html(resource.title))
+      .append(buildResourceCardDescription(resource, plusone))
+      .appendTo(this);
+
+    return this;
+  };
+
+  /* Simple jquery function to create dom for a resource section card (menu) */
+  $.fn.decorateResourceSection = function(section,plusone) {
+    var resource = section.resource;
+    //keep url clean for matching and offline mode handling
+    var urlPrefix = resource.image.indexOf("//") > -1 ? "" : toRoot;
+    var $base = $('<a>')
+        .addClass('card-bg')
+        .attr('href', resource.url)
+        .append($('<div>').addClass('card-section-icon')
+          .append($('<div>').addClass('icon'))
+          .append($('<div>').addClass('section').html(resource.title)))
+      .appendTo(this);
+
+    var $cardInfo = $('<div>').addClass('card-info').appendTo(this);
+
+    if (section.sections && section.sections.length) {
+      // Recurse the section sub-tree to find a resource image.
+      var stack = [section];
+
+      while (stack.length) {
+        if (stack[0].resource.image) {
+          $base.css('background-image', 'url(' + urlPrefix + stack[0].resource.image + ')');
+          break;
+        }
+
+        if (stack[0].sections) {
+          stack = stack.concat(stack[0].sections);
+        }
+
+        stack.shift();
+      }
+
+      var $ul = $('<ul>')
+        .appendTo($cardInfo);
+
+      var max = section.sections.length > 3 ? 3 : section.sections.length;
+
+      for (var i = 0; i < max; ++i) {
+
+        var subResource = section.sections[i];
+        if (!plusone) {
+          $('<li>')
+            .append($('<a>').attr('href', subResource.url)
+              .append($('<div>').addClass('title').html(subResource.title))
+              .append($('<div>').addClass('description ellipsis')
+                .append($('<div>').addClass('text').html(subResource.summary))
+                .append($('<div>').addClass('util'))))
+          .appendTo($ul);
+        } else {
+          $('<li>')
+            .append($('<a>').attr('href', subResource.url)
+              .append($('<div>').addClass('title').html(subResource.title))
+              .append($('<div>').addClass('description ellipsis')
+                .append($('<div>').addClass('text').html(subResource.summary))
+                .append($('<div>').addClass('util')
+                  .append($('<div>').addClass('g-plusone')
+                    .attr('data-size', 'small')
+                    .attr('data-align', 'right')
+                    .attr('data-href', resource.url)))))
+          .appendTo($ul);
+        }
+      }
+
+      // Add a more row
+      if (max < section.sections.length) {
+        $('<li>')
+          .append($('<a>').attr('href', resource.url)
+            .append($('<div>')
+              .addClass('title')
+              .text('More')))
+        .appendTo($ul);
+      }
+    } else {
+      // No sub-resources, just render description?
+    }
+
+    return this;
+  };
+
+
+
+
+  /* Render other types of resource styles that are not cards. */
+  $.fn.decorateResource = function(resource, opts) {
+    var imgUrl = resource.image ||
+      'assets/images/resource-card-default-android.jpg';
+    var linkUrl = resource.url;
+
+    if (imgUrl.indexOf('//') === -1) {
+      imgUrl = toRoot + imgUrl;
+    }
+
+    if (linkUrl && linkUrl.indexOf('//') === -1) {
+      linkUrl = toRoot + linkUrl;
+    }
+
+    $(this).append(
+      $('<div>').addClass('image')
+        .css('background-image', 'url(' + imgUrl + ')'),
+      $('<div>').addClass('info').append(
+        $('<h4>').addClass('title').html(resource.title),
+        $('<p>').addClass('summary').html(resource.summary),
+        $('<a>').attr('href', linkUrl).addClass('cta').html('Learn More')
+      )
+    );
+
+    return this;
+  };
+})(jQuery);
+
+
+/* Calculate the vertical area remaining */
+(function($) {
+    $.fn.ellipsisfade= function(lineHeight) {
+        this.each(function() {
+            // get element text
+            var $this = $(this);
+            var remainingHeight = $this.parent().parent().height();
+            $this.parent().siblings().each(function ()
+            {
+              if ($(this).is(":visible")) {
+                var h = $(this).outerHeight(true);
+                remainingHeight = remainingHeight - h;
+              }
+            });
+
+            adjustedRemainingHeight = ((remainingHeight)/lineHeight>>0)*lineHeight
+            $this.parent().css({'height': adjustedRemainingHeight});
+            $this.css({'height': "auto"});
+        });
+
+        return this;
+    };
+}) (jQuery);
+
+/*
+  Fullscreen Carousel
+
+  The following allows for an area at the top of the page that takes over the
+  entire browser height except for its top offset and an optional bottom
+  padding specified as a data attribute.
+
+  HTML:
+
+  <div class="fullscreen-carousel">
+    <div class="fullscreen-carousel-content">
+      <!-- content here -->
+    </div>
+    <div class="fullscreen-carousel-content">
+      <!-- content here -->
+    </div>
+
+    etc ...
+
+  </div>
+
+  Control over how the carousel takes over the screen can mostly be defined in
+  a css file. Setting min-height on the .fullscreen-carousel-content elements
+  will prevent them from shrinking to far vertically when the browser is very
+  short, and setting max-height on the .fullscreen-carousel itself will prevent
+  the area from becoming to long in the case that the browser is stretched very
+  tall.
+
+  There is limited functionality for having multiple sections since that request
+  was removed, but it is possible to add .next-arrow and .prev-arrow elements to
+  scroll between multiple content areas.
+*/
+
+(function() {
+  $(document).ready(function() {
+    $('.fullscreen-carousel').each(function() {
+      initWidget(this);
+    });
+  });
+
+  function initWidget(widget) {
+    var $widget = $(widget);
+
+    var topOffset = $widget.offset().top;
+    var padBottom = parseInt($widget.data('paddingbottom')) || 0;
+    var maxHeight = 0;
+    var minHeight = 0;
+    var $content = $widget.find('.fullscreen-carousel-content');
+    var $nextArrow = $widget.find('.next-arrow');
+    var $prevArrow = $widget.find('.prev-arrow');
+    var $curSection = $($content[0]);
+
+    if ($content.length <= 1) {
+      $nextArrow.hide();
+      $prevArrow.hide();
+    } else {
+      $nextArrow.click(function() {
+        var index = ($content.index($curSection) + 1);
+        $curSection.hide();
+        $curSection = $($content[index >= $content.length ? 0 : index]);
+        $curSection.show();
+      });
+
+      $prevArrow.click(function() {
+        var index = ($content.index($curSection) - 1);
+        $curSection.hide();
+        $curSection = $($content[index < 0 ? $content.length - 1 : 0]);
+        $curSection.show();
+      });
+    }
+
+    // Just hide all content sections except first.
+    $content.each(function(index) {
+      if ($(this).height() > minHeight) minHeight = $(this).height();
+      $(this).css({position: 'absolute',  display: index > 0 ? 'none' : ''});
+    });
+
+    // Register for changes to window size, and trigger.
+    $(window).resize(resizeWidget);
+    resizeWidget();
+
+    function resizeWidget() {
+      var height = $(window).height() - topOffset - padBottom;
+      $widget.width($(window).width());
+      $widget.height(height < minHeight ? minHeight :
+        (maxHeight && height > maxHeight ? maxHeight : height));
+    }
+  }
+})();
+
+
+
+
+
+/*
+  Tab Carousel
+
+  The following allows tab widgets to be installed via the html below. Each
+  tab content section should have a data-tab attribute matching one of the
+  nav items'. Also each tab content section should have a width matching the
+  tab carousel.
+
+  HTML:
+
+  <div class="tab-carousel">
+    <ul class="tab-nav">
+      <li><a href="#" data-tab="handsets">Handsets</a>
+      <li><a href="#" data-tab="wearable">Wearable</a>
+      <li><a href="#" data-tab="tv">TV</a>
+    </ul>
+
+    <div class="tab-carousel-content">
+      <div data-tab="handsets">
+        <!--Full width content here-->
+      </div>
+
+      <div data-tab="wearable">
+        <!--Full width content here-->
+      </div>
+
+      <div data-tab="tv">
+        <!--Full width content here-->
+      </div>
+    </div>
+  </div>
+
+*/
+(function() {
+  $(document).ready(function() {
+    $('.tab-carousel').each(function() {
+      initWidget(this);
+    });
+  });
+
+  function initWidget(widget) {
+    var $widget = $(widget);
+    var $nav = $widget.find('.tab-nav');
+    var $anchors = $nav.find('[data-tab]');
+    var $li = $nav.find('li');
+    var $contentContainer = $widget.find('.tab-carousel-content');
+    var $tabs = $contentContainer.find('[data-tab]');
+    var $curTab = $($tabs[0]); // Current tab is first tab.
+    var width = $widget.width();
+
+    // Setup nav interactivity.
+    $anchors.click(function(evt) {
+      evt.preventDefault();
+      var query = '[data-tab=' + $(this).data('tab') + ']';
+      transitionWidget($tabs.filter(query));
+    });
+
+    // Add highlight for navigation on first item.
+    var $highlight = $('<div>').addClass('highlight')
+      .css({left:$li.position().left + 'px', width:$li.outerWidth() + 'px'})
+      .appendTo($nav);
+
+    // Store height since we will change contents to absolute.
+    $contentContainer.height($contentContainer.height());
+
+    // Absolutely position tabs so they're ready for transition.
+    $tabs.each(function(index) {
+      $(this).css({position: 'absolute', left: index > 0 ? width + 'px' : '0'});
+    });
+
+    function transitionWidget($toTab) {
+      if (!$curTab.is($toTab)) {
+        var curIndex = $tabs.index($curTab[0]);
+        var toIndex = $tabs.index($toTab[0]);
+        var dir = toIndex > curIndex ? 1 : -1;
+
+        // Animate content sections.
+        $toTab.css({left:(width * dir) + 'px'});
+        $curTab.animate({left:(width * -dir) + 'px'});
+        $toTab.animate({left:'0'});
+
+        // Animate navigation highlight.
+        $highlight.animate({left:$($li[toIndex]).position().left + 'px',
+          width:$($li[toIndex]).outerWidth() + 'px'})
+
+        // Store new current section.
+        $curTab = $toTab;
+      }
+    }
+  }
+})();
+
+/**
+ * Auto TOC
+ *
+ * Upgrades h2s on the page to have a rule and be toggle-able on mobile.
+ */
+(function($) {
+  var upgraded = false;
+  var h2Titles;
+
+  function initWidget() {
+    // add HRs below all H2s (except for a few other h2 variants)
+    // Consider doing this with css instead.
+    h2Titles = $('h2').not('#qv h2, #tb h2, .sidebox h2, #devdoc-nav h2, h2.norule');
+    h2Titles.css({marginBottom:0}).after('<hr/>');
+
+    // Exit early if on older browser.
+    if (!window.matchMedia) {
+      return;
+    }
+
+    // Only run logic in mobile layout.
+    var query = window.matchMedia('(max-width: 719px)');
+    if (query.matches) {
+      makeTogglable();
+    } else {
+      query.addListener(makeTogglable);
+    }
+  }
+
+  function makeTogglable() {
+    // Only run this logic once.
+    if (upgraded) { return; }
+    upgraded = true;
+
+    // Only make content h2s togglable.
+    var contentTitles = h2Titles.filter('#jd-content *');
+
+    // If there are more than 1
+    if (contentTitles.size() < 2) {
+      return;
+    }
+
+    contentTitles.each(function() {
+      // Find all the relevant nodes.
+      var $title = $(this);
+      var $hr = $title.next();
+      var $contents = $hr.nextUntil('h2, .next-docs');
+      var $section = $($title)
+        .add($hr)
+        .add($title.prev('a[name]'))
+        .add($contents);
+      var $anchor = $section.first().prev();
+      var anchorMethod = 'after';
+      if ($anchor.length === 0) {
+        $anchor = $title.parent();
+        anchorMethod = 'prepend';
+      }
+
+      // Some h2s are in their own container making it pretty hard to find the end, so skip.
+      if ($contents.length === 0) {
+        return;
+      }
+
+      // Remove from DOM before messing with it. DOM is slow!
+      $section.detach();
+
+      // Add mobile-only expand arrows.
+      $title.prepend('<span class="dac-visible-mobile-inline-block">' +
+          '<i class="dac-toggle-expand dac-sprite dac-expand-more-black"></i>' +
+          '<i class="dac-toggle-collapse dac-sprite dac-expand-less-black"></i>' +
+          '</span>')
+        .attr('data-toggle', 'section');
+
+      // Wrap in magic markup.
+      $section = $section.wrapAll('<div class="dac-toggle dac-mobile">').parent();
+      $contents.wrapAll('<div class="dac-toggle-content"><div>'); // extra div used for max-height calculation.
+
+      // Pre-expand section if requested.
+      if ($title.hasClass('is-expanded')) {
+        $section.addClass('is-expanded');
+      }
+
+      // Pre-expand section if targetted by hash.
+      if (location.hash && $section.find(location.hash).length) {
+        $section.addClass('is-expanded');
+      }
+
+      // Add it back to the dom.
+      $anchor[anchorMethod].call($anchor, $section);
+    });
+  }
+
+  $(function() {
+    initWidget();
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  /**
+   * Toggle Floating Label state.
+   * @param {HTMLElement} el - The DOM element.
+   * @param options
+   * @constructor
+   */
+  function FloatingLabel(el, options) {
+    this.el = $(el);
+    this.options = $.extend({}, FloatingLabel.DEFAULTS_, options);
+    this.group = this.el.closest('.dac-form-input-group');
+    this.input = this.group.find('.dac-form-input');
+
+    this.checkValue_ = this.checkValue_.bind(this);
+    this.checkValue_();
+
+    this.input.on('focus', function() {
+      this.group.addClass('dac-focused');
+    }.bind(this));
+    this.input.on('blur', function() {
+      this.group.removeClass('dac-focused');
+      this.checkValue_();
+    }.bind(this));
+    this.input.on('keyup', this.checkValue_);
+  }
+
+  /**
+   * The label is moved out of the textbox when it has a value.
+   */
+  FloatingLabel.prototype.checkValue_ = function() {
+    if (this.input.val().length) {
+      this.group.addClass('dac-has-value');
+    } else {
+      this.group.removeClass('dac-has-value');
+    }
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacFloatingLabel = function(options) {
+    return this.each(function() {
+      new FloatingLabel(this, options);
+    });
+  };
+
+  $(document).on('ready.aranja', function() {
+    $('.dac-form-floatlabel').each(function() {
+      $(this).dacFloatingLabel($(this).data());
+    });
+  });
+})(jQuery);
+
+/* global toRoot, CAROUSEL_OVERRIDE */
+(function($) {
+  // Ordering matters
+  var TAG_MAP = [
+    {from: 'developerstory', to: 'Android Developer Story'},
+    {from: 'googleplay', to: 'Google Play'}
+  ];
+
+  function DacCarouselQuery(el) {
+    this.el = $(el);
+
+    var opts = this.el.data();
+    opts.maxResults = parseInt(opts.maxResults || '100', 10);
+    opts.query = opts.carouselQuery;
+    var resources = $.queryResources(opts);
+
+    this.el.empty();
+    $(resources).map(function() {
+      var resource = $.extend({}, this, CAROUSEL_OVERRIDE[this.url]);
+      var slide = $('<article class="dac-expand dac-hero">');
+      var image = cleanUrl(resource.heroImage || resource.image);
+      var fullBleed = image && !resource.heroColor;
+
+      // Configure background
+      slide.css({
+        backgroundImage: fullBleed ? 'url(' + image + ')' : '',
+        backgroundColor: resource.heroColor || ''
+      });
+
+      // Should copy be inverted
+      slide.toggleClass('dac-invert', resource.heroInvert || fullBleed);
+      slide.toggleClass('dac-darken', fullBleed);
+
+      // Should be clickable
+      slide.append($('<a class="dac-hero-carousel-action">').attr('href', cleanUrl(resource.url)));
+
+      var cols = $('<div class="cols dac-hero-content">');
+
+      // inline image column
+      var rightCol = $('<div class="col-1of2 col-push-1of2 dac-hero-figure">')
+        .appendTo(cols);
+
+      if (!fullBleed && image) {
+        rightCol.append($('<img>').attr('src', image));
+      }
+
+      // info column
+      $('<div class="col-1of2 col-pull-1of2">')
+        .append($('<div class="dac-hero-tag">').text(formatTag(resource)))
+        .append($('<h1 class="dac-hero-title">').text(formatTitle(resource)))
+        .append($('<p class="dac-hero-description">').text(resource.summary))
+        .append($('<a class="dac-hero-cta">')
+          .text(formatCTA(resource))
+          .attr('href', cleanUrl(resource.url))
+          .prepend($('<span class="dac-sprite dac-auto-chevron">'))
+        )
+        .appendTo(cols);
+
+      slide.append(cols.wrap('<div class="wrap">').parent());
+      return slide[0];
+    }).prependTo(this.el);
+
+    // Pagination element.
+    this.el.append('<div class="dac-hero-carousel-pagination"><div class="wrap" data-carousel-pagination>');
+
+    this.el.dacCarousel();
+  }
+
+  function cleanUrl(url) {
+    if (url && url.indexOf('//') === -1) {
+      url = toRoot + url;
+    }
+    return url;
+  }
+
+  function formatTag(resource) {
+    // Hmm, need a better more scalable solution for this.
+    for (var i = 0, mapping; mapping = TAG_MAP[i]; i++) {
+      if (resource.tags.indexOf(mapping.from) > -1) {
+        return mapping.to;
+      }
+    }
+    return resource.type;
+  }
+
+  function formatTitle(resource) {
+    return resource.title.replace(/android developer story: /i, '');
+  }
+
+  function formatCTA(resource) {
+    return resource.type === 'youtube' ? 'Watch the video' : 'Learn more';
+  }
+
+  // jQuery plugin
+  $.fn.dacCarouselQuery = function() {
+    return this.each(function() {
+      var el = $(this);
+      var data = el.data('dac.carouselQuery');
+
+      if (!data) { el.data('dac.carouselQuery', (data = new DacCarouselQuery(el))); }
+    });
+  };
+
+  // Data API
+  $(function() {
+    $('[data-carousel-query]').dacCarouselQuery();
+  });
+})(jQuery);
+
+(function($) {
+  /**
+   * A CSS based carousel, inspired by SequenceJS.
+   * @param {jQuery} el
+   * @param {object} options
+   * @constructor
+   */
+  function DacCarousel(el, options) {
+    this.el = $(el);
+    this.options = options = $.extend({}, DacCarousel.OPTIONS, this.el.data(), options || {});
+    this.frames = this.el.find(options.frameSelector);
+    this.count = this.frames.size();
+    this.current = options.start;
+
+    this.initPagination();
+    this.initEvents();
+    this.initFrame();
+  }
+
+  DacCarousel.OPTIONS = {
+    auto:      true,
+    autoTime:  10000,
+    autoMinTime: 5000,
+    btnPrev:   '[data-carousel-prev]',
+    btnNext:   '[data-carousel-next]',
+    frameSelector: 'article',
+    loop:      true,
+    start:     0,
+    swipeThreshold: 160,
+    pagination: '[data-carousel-pagination]'
+  };
+
+  DacCarousel.prototype.initPagination = function() {
+    this.pagination = $([]);
+    if (!this.options.pagination) { return; }
+
+    var pagination = $('<ul class="dac-pagination">');
+    var parent = this.el;
+    if (typeof this.options.pagination === 'string') { parent = this.el.find(this.options.pagination); }
+
+    if (this.count > 1) {
+      for (var i = 0; i < this.count; i++) {
+        var li = $('<li class="dac-pagination-item">').text(i);
+        if (i === this.options.start) { li.addClass('active'); }
+        li.click(this.go.bind(this, i));
+
+        pagination.append(li);
+      }
+      this.pagination = pagination.children();
+      parent.append(pagination);
+    }
+  };
+
+  DacCarousel.prototype.initEvents = function() {
+    var that = this;
+
+    this.touch = {
+      start: {x: 0, y: 0},
+      end:   {x: 0, y: 0}
+    };
+
+    this.el.on('touchstart', this.touchstart_.bind(this));
+    this.el.on('touchend', this.touchend_.bind(this));
+    this.el.on('touchmove', this.touchmove_.bind(this));
+
+    this.el.hover(function() {
+      that.pauseRotateTimer();
+    }, function() {
+      that.startRotateTimer();
+    });
+
+    $(this.options.btnPrev).click(function(e) {
+      e.preventDefault();
+      that.prev();
+    });
+
+    $(this.options.btnNext).click(function(e) {
+      e.preventDefault();
+      that.next();
+    });
+  };
+
+  DacCarousel.prototype.touchstart_ = function(event) {
+    var t = event.originalEvent.touches[0];
+    this.touch.start = {x: t.screenX, y: t.screenY};
+  };
+
+  DacCarousel.prototype.touchend_ = function() {
+    var deltaX = this.touch.end.x - this.touch.start.x;
+    var deltaY = Math.abs(this.touch.end.y - this.touch.start.y);
+    var shouldSwipe = (deltaY < Math.abs(deltaX)) && (Math.abs(deltaX) >= this.options.swipeThreshold);
+
+    if (shouldSwipe) {
+      if (deltaX > 0) {
+        this.prev();
+      } else {
+        this.next();
+      }
+    }
+  };
+
+  DacCarousel.prototype.touchmove_ = function(event) {
+    var t = event.originalEvent.touches[0];
+    this.touch.end = {x: t.screenX, y: t.screenY};
+  };
+
+  DacCarousel.prototype.initFrame = function() {
+    this.frames.removeClass('active').eq(this.options.start).addClass('active');
+  };
+
+  DacCarousel.prototype.startRotateTimer = function() {
+    if (!this.options.auto || this.rotateTimer) { return; }
+    this.rotateTimer = setTimeout(this.next.bind(this), this.options.autoTime);
+  };
+
+  DacCarousel.prototype.pauseRotateTimer = function() {
+    clearTimeout(this.rotateTimer);
+    this.rotateTimer = null;
+  };
+
+  DacCarousel.prototype.prev = function() {
+    this.go(this.current - 1);
+  };
+
+  DacCarousel.prototype.next = function() {
+    this.go(this.current + 1);
+  };
+
+  DacCarousel.prototype.go = function(next) {
+    // Figure out what the next slide is.
+    while (this.count > 0 && next >= this.count) { next -= this.count; }
+    while (next < 0) { next += this.count; }
+
+    // Cancel if we're already on that slide.
+    if (next === this.current) { return; }
+
+    // Prepare next slide.
+    this.frames.eq(next).removeClass('out');
+
+    // Recalculate styles before starting slide transition.
+    this.el.resolveStyles();
+    // Update pagination
+    this.pagination.removeClass('active').eq(next).addClass('active');
+
+    // Transition out current frame
+    this.frames.eq(this.current).toggleClass('active out');
+
+    // Transition in a new frame
+    this.frames.eq(next).toggleClass('active');
+
+    this.current = next;
+  };
+
+  // Helper which resolves new styles for an element, so it can start transitioning
+  // from the new values.
+  $.fn.resolveStyles = function() {
+    /*jshint expr:true*/
+    this[0] && this[0].offsetTop;
+    return this;
+  };
+
+  // jQuery plugin
+  $.fn.dacCarousel = function() {
+    this.each(function() {
+      var $el = $(this);
+      $el.data('dac-carousel', new DacCarousel(this));
+    });
+    return this;
+  };
+
+  // Data API
+  $(function() {
+    $('[data-carousel]').dacCarousel();
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  function Modal(el, options) {
+    this.el = $(el);
+    this.options = $.extend({}, ToggleModal.DEFAULTS_, options);
+    this.isOpen = false;
+
+    this.el.on('click', function(event) {
+      if (!$.contains($('.dac-modal-window')[0], event.target)) {
+        return this.el.trigger('modal-close');
+      }
+    }.bind(this));
+
+    this.el.on('modal-open', this.open_.bind(this));
+    this.el.on('modal-close', this.close_.bind(this));
+    this.el.on('modal-toggle', this.toggle_.bind(this));
+  }
+
+  Modal.prototype.toggle_ = function() {
+    this.el.trigger('modal-' + (this.isOpen ? 'close' : 'open'));
+  };
+
+  Modal.prototype.close_ = function() {
+    this.el.removeClass('dac-active');
+    $('body').removeClass('dac-modal-open');
+    this.isOpen = false;
+    // When closing the modal for Android Studio downloads, reload the page
+    // because otherwise we might get stuck with post-download dialog state
+    if ($("[data-modal='studio_tos']").length) {
+      location.reload();
+    }
+  };
+
+  Modal.prototype.open_ = function() {
+    this.el.addClass('dac-active');
+    $('body').addClass('dac-modal-open');
+    this.isOpen = true;
+  };
+
+  function ToggleModal(el, options) {
+    this.el = $(el);
+    this.options = $.extend({}, ToggleModal.DEFAULTS_, options);
+    this.modal = this.options.modalToggle ? $('[data-modal="' + this.options.modalToggle + '"]') :
+      this.el.closest('[data-modal]');
+
+    this.el.on('click', this.clickHandler_.bind(this));
+  }
+
+  ToggleModal.prototype.clickHandler_ = function(event) {
+    event.preventDefault();
+    this.modal.trigger('modal-toggle');
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacModal = function(options) {
+    return this.each(function() {
+      new Modal(this, options);
+    });
+  };
+
+  $.fn.dacToggleModal = function(options) {
+    return this.each(function() {
+      new ToggleModal(this, options);
+    });
+  };
+
+  /**
+   * Data Attribute API
+   */
+  $(document).on('ready.aranja', function() {
+    $('[data-modal]').each(function() {
+      $(this).dacModal($(this).data());
+    });
+
+    $('[data-modal-toggle]').each(function() {
+      $(this).dacToggleModal($(this).data());
+    });
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  /**
+   * Toggle the visabilty of the mobile navigation.
+   * @param {HTMLElement} el - The DOM element.
+   * @param options
+   * @constructor
+   */
+  function ToggleNav(el, options) {
+    this.el = $(el);
+    this.options = $.extend({}, ToggleNav.DEFAULTS_, options);
+    this.options.target = [this.options.navigation];
+
+    if (this.options.body) {this.options.target.push('body')}
+    if (this.options.dimmer) {this.options.target.push(this.options.dimmer)}
+
+    this.el.on('click', this.clickHandler_.bind(this));
+  }
+
+  /**
+   * ToggleNav Default Settings
+   * @type {{body: boolean, dimmer: string, navigation: string, toggleClass: string}}
+   * @private
+   */
+  ToggleNav.DEFAULTS_ = {
+    body: true,
+    dimmer: '.dac-nav-dimmer',
+    navigation: '[data-dac-nav]',
+    toggleClass: 'dac-nav-open'
+  };
+
+  /**
+   * The actual toggle logic.
+   * @param event
+   * @private
+   */
+  ToggleNav.prototype.clickHandler_ = function(event) {
+    event.preventDefault();
+    $(this.options.target.join(', ')).toggleClass(this.options.toggleClass);
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacToggleMobileNav = function(options) {
+    return this.each(function() {
+      new ToggleNav(this, options);
+    });
+  };
+
+  /**
+   * Data Attribute API
+   */
+  $(window).on('load.aranja', function() {
+    $('[data-dac-toggle-nav]').each(function() {
+      $(this).dacToggleMobileNav($(this).data());
+    });
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  /**
+   * Submit the newsletter form to a Google Form.
+   * @param {HTMLElement} el - The Form DOM element.
+   * @constructor
+   */
+  function NewsletterForm(el) {
+    this.el = $(el);
+    this.form = this.el.find('form');
+    $('<iframe/>').hide()
+      .attr('name', 'dac-newsletter-iframe')
+      .attr('src', '')
+      .insertBefore(this.form);
+    this.form.on('submit', this.submitHandler_.bind(this));
+  }
+
+  /**
+   * Milliseconds until modal has vanished after modal-close is triggered.
+   * @type {number}
+   * @private
+   */
+  NewsletterForm.CLOSE_DELAY_ = 300;
+
+  /**
+   * Switch view to display form after close.
+   * @private
+   */
+  NewsletterForm.prototype.closeHandler_ = function() {
+    setTimeout(function() {
+      this.el.trigger('swap-reset');
+    }.bind(this), NewsletterForm.CLOSE_DELAY_);
+  };
+
+  /**
+   * Reset the modal to initial state.
+   * @private
+   */
+  NewsletterForm.prototype.reset_ = function() {
+    this.form.trigger('reset');
+    this.el.one('modal-close', this.closeHandler_.bind(this));
+  };
+
+  /**
+   * Display a success view on submit.
+   * @private
+   */
+  NewsletterForm.prototype.submitHandler_ = function() {
+    this.el.one('swap-complete', this.reset_.bind(this));
+    this.el.trigger('swap-content');
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacNewsletterForm = function(options) {
+    return this.each(function() {
+      new NewsletterForm(this, options);
+    });
+  };
+
+  /**
+   * Data Attribute API
+   */
+  $(document).on('ready.aranja', function() {
+    $('[data-newsletter]').each(function() {
+      $(this).dacNewsletterForm();
+    });
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  /**
+   * Smoothly scroll to location on current page.
+   * @param el
+   * @param options
+   * @constructor
+   */
+  function ScrollButton(el, options) {
+    this.el = $(el);
+    this.target = $(this.el.attr('href'));
+    this.options = $.extend({}, ScrollButton.DEFAULTS_, options);
+
+    if (typeof this.options.offset === 'string') {
+      this.options.offset = $(this.options.offset).height();
+    }
+
+    this.el.on('click', this.clickHandler_.bind(this));
+  }
+
+  /**
+   * Default options
+   * @type {{duration: number, easing: string, offset: number, scrollContainer: string}}
+   * @private
+   */
+  ScrollButton.DEFAULTS_ = {
+    duration: 300,
+    easing: 'swing',
+    offset: 0,
+    scrollContainer: 'html, body'
+  };
+
+  /**
+   * Scroll logic
+   * @param event
+   * @private
+   */
+  ScrollButton.prototype.clickHandler_ = function(event) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    $(this.options.scrollContainer).animate({
+      scrollTop: this.target.offset().top - this.options.offset
+    }, this.options);
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacScrollButton = function(options) {
+    return this.each(function() {
+      new ScrollButton(this, options);
+    });
+  };
+
+  /**
+   * Data Attribute API
+   */
+  $(document).on('ready.aranja', function() {
+    $('[data-scroll-button]').each(function() {
+      $(this).dacScrollButton($(this).data());
+    });
+  });
+})(jQuery);
+
+(function($) {
+  'use strict';
+
+  /**
+   * A component that swaps two dynamic height views with an animation.
+   * Listens for the following events:
+   * * swap-content: triggers SwapContent.swap_()
+   * * swap-reset: triggers SwapContent.reset()
+   * @param el
+   * @param options
+   * @constructor
+   */
+  function SwapContent(el, options) {
+    this.el = $(el);
+    this.options = $.extend({}, SwapContent.DEFAULTS_, options);
+    this.containers = this.el.find(this.options.container);
+    this.initiallyActive = this.containers.children('.' + this.options.activeClass).eq(0);
+    this.el.on('swap-content', this.swap.bind(this));
+    this.el.on('swap-reset', this.reset.bind(this));
+  }
+
+  /**
+   * SwapContent's default settings.
+   * @type {{activeClass: string, container: string, transitionSpeed: number}}
+   * @private
+   */
+  SwapContent.DEFAULTS_ = {
+    activeClass: 'dac-active',
+    container: '[data-swap-container]',
+    transitionSpeed: 500
+  };
+
+  /**
+   * Returns container's visible height.
+   * @param container
+   * @returns {number}
+   */
+  SwapContent.prototype.currentHeight = function(container) {
+    return container.children('.' + this.options.activeClass).outerHeight();
+  };
+
+  /**
+   * Reset to show initial content
+   */
+  SwapContent.prototype.reset = function() {
+    if (!this.initiallyActive.hasClass(this.initiallyActive)) {
+      this.containers.children().toggleClass(this.options.activeClass);
+    }
+  };
+
+  /**
+   * Complete the swap.
+   */
+  SwapContent.prototype.complete = function() {
+    this.containers.height('auto');
+    this.containers.trigger('swap-complete');
+  };
+
+  /**
+   * Perform the swap of content.
+   */
+  SwapContent.prototype.swap = function() {
+    console.log(this.containers);
+    this.containers.each(function(index, container) {
+      container = $(container);
+      container.height(this.currentHeight(container)).children().toggleClass(this.options.activeClass);
+      container.animate({height: this.currentHeight(container)}, this.options.transitionSpeed,
+        this.complete.bind(this));
+    }.bind(this));
+  };
+
+  /**
+   * jQuery plugin
+   * @param  {object} options - Override default options.
+   */
+  $.fn.dacSwapContent = function(options) {
+    return this.each(function() {
+      new SwapContent(this, options);
+    });
+  };
+
+  /**
+   * Data Attribute API
+   */
+  $(document).on('ready.aranja', function() {
+    $('[data-swap]').each(function() {
+      $(this).dacSwapContent($(this).data());
+    });
+  });
+})(jQuery);
+
+(function($) {
+  function Toggle(el) {
+    $(el).on('click.dac.togglesection', this.toggle);
+  }
+
+  Toggle.prototype.toggle = function() {
+    var $this = $(this);
+
+    var $parent = getParent($this);
+    var isExpanded = $parent.hasClass('is-expanded');
+
+    transitionMaxHeight($parent.find('.dac-toggle-content'), !isExpanded);
+    $parent.toggleClass('is-expanded');
+
+    return false;
+  };
+
+  function getParent($this) {
+    var selector = $this.attr('data-target');
+
+    if (!selector) {
+      selector = $this.attr('href');
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '');
+    }
+
+    var $parent = selector && $(selector);
+
+    $parent = $parent && $parent.length ? $parent : $this.closest('.dac-toggle');
+
+    return $parent.length ? $parent : $this.parent();
+  }
+
+  /**
+   * Runs a transition of max-height along with responsive styles which hide or expand the element.
+   * @param $el
+   * @param visible
+   */
+  function transitionMaxHeight($el, visible) {
+    var contentHeight = $el.prop('scrollHeight');
+    var targetHeight = visible ? contentHeight : 0;
+    var duration = $el.transitionDuration();
+
+    // If we're hiding, first set the maxHeight we're transitioning from.
+    if (!visible) {
+      $el.css('maxHeight', contentHeight + 'px')
+        .resolveStyles();
+    }
+
+    // Transition to new state
+    $el.css('maxHeight', targetHeight);
+
+    // Reset maxHeight to css value after transition.
+    setTimeout(function() {
+      $el.css('maxHeight', '');
+    }, duration);
+  }
+
+  // Utility to get the transition duration for the element.
+  $.fn.transitionDuration = function() {
+    var d = $(this).css('transitionDuration') || '0s';
+
+    return +(parseFloat(d) * (/ms/.test(d) ? 1 : 1000)).toFixed(0);
+  };
+
+  // jQuery plugin
+  $.fn.toggleSection = function(option) {
+    return this.each(function() {
+      var $this = $(this);
+      var data = $this.data('dac.togglesection');
+      if (!data) {$this.data('dac.togglesection', (data = new Toggle(this)));}
+      if (typeof option === 'string') {data[option].call($this);}
+    });
+  };
+
+  // Data api
+  $(document)
+    .on('click.toggle', '[data-toggle="section"]', Toggle.prototype.toggle);
+})(jQuery);

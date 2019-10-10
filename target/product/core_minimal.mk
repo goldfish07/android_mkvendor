@@ -23,46 +23,132 @@ PRODUCT_DEVICE := generic
 PRODUCT_NAME := core
 
 PRODUCT_PACKAGES += \
-    aapt \
     BackupRestoreConfirmation \
+    CtsShimPrebuilt \
+    CtsShimPrivPrebuilt \
     DownloadProvider \
+    ExtShared \
+    ExtServices \
     HTMLViewer \
     MediaProvider \
     PackageInstaller \
     SettingsProvider \
     Shell \
+    StatementService \
+    WallpaperBackup \
+    bcc \
     bu \
+    com.android.future.usb.accessory \
     com.android.location.provider \
     com.android.location.provider.xml \
     com.android.media.remotedisplay \
     com.android.media.remotedisplay.xml \
+    com.android.mediadrm.signer \
+    com.android.mediadrm.signer.xml \
     drmserver \
+    ethernet-service \
     framework-res \
     idmap \
     installd \
+    ims-common \
     ip \
     ip-up-vpn \
     ip6tables \
     iptables \
+    gatekeeperd \
     keystore \
     keystore.default \
+    ld.mc \
+    libbcc \
     libOpenMAXAL \
     libOpenSLES \
     libdownmix \
     libdrmframework \
     libdrmframework_jni \
     libfilterfw \
-    libsqlite_jni \
+    libkeystore \
+    libgatekeeper \
     libwilhelm \
+    logd \
     make_ext4fs \
+    e2fsck \
+    resize2fs \
     screencap \
     sensorservice \
+    telephony-common \
     uiautomator \
-    uncrypt
+    uncrypt \
+    voip-common \
+    webview \
+    wifi-service
 
-PRODUCT_BOOT_JARS := core:conscrypt:okhttp:core-junit:bouncycastle:ext:framework:framework2:android.policy:services:apache-xml:webviewchromium
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.software.webview.xml:system/etc/permissions/android.software.webview.xml
 
-PRODUCT_RUNTIMES := runtime_libdvm_default
-PRODUCT_RUNTIMES += runtime_libart
+# The order of PRODUCT_BOOT_JARS matters.
+PRODUCT_BOOT_JARS := \
+    core-oj \
+    core-libart \
+    conscrypt \
+    okhttp \
+    core-junit \
+    bouncycastle \
+    ext \
+    framework \
+    telephony-common \
+    voip-common \
+    ims-common \
+    apache-xml \
+    org.apache.http.legacy.boot
 
+# The order of PRODUCT_SYSTEM_SERVER_JARS matters.
+ifneq ($(TARGET_DISABLE_CMSDK), true)
+PRODUCT_SYSTEM_SERVER_JARS := \
+    org.cyanogenmod.platform \
+    org.cyanogenmod.hardware
+endif
+PRODUCT_SYSTEM_SERVER_JARS += \
+    services \
+    ethernet-service \
+    wifi-service
+
+# Adoptable external storage f2fs support
+PRODUCT_PACKAGES += \
+    fsck.f2fs \
+    mkfs.f2fs \
+
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    ro.zygote=zygote32
+PRODUCT_COPY_FILES += \
+    system/core/rootdir/init.zygote32.rc:root/init.zygote32.rc
+
+PRODUCT_COPY_FILES += \
+    system/core/rootdir/etc/public.libraries.android.txt:system/etc/public.libraries.txt
+
+# Different dexopt types for different package update/install times.
+# On eng builds, make "boot" reasons do pure JIT for faster turnaround.
+ifeq (eng,$(TARGET_BUILD_VARIANT))
+    PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+        pm.dexopt.first-boot=verify-at-runtime \
+        pm.dexopt.boot=verify-at-runtime
+else
+    PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+        pm.dexopt.first-boot=interpret-only \
+        pm.dexopt.boot=verify-profile
+endif
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    pm.dexopt.install=interpret-only \
+    pm.dexopt.bg-dexopt=speed-profile \
+    pm.dexopt.ab-ota=speed-profile \
+    pm.dexopt.nsys-library=speed \
+    pm.dexopt.shared-apk=speed \
+    pm.dexopt.forced-dexopt=speed \
+    pm.dexopt.core-app=speed
+
+
+# Enable boot.oat filtering of compiled classes to reduce boot.oat size. b/28026683
+PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
+    frameworks/base/compiled-classes-phone:system/etc/compiled-classes)
+
+$(call inherit-product, $(SRC_TARGET_DIR)/product/runtime_libart.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)

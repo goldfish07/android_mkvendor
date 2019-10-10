@@ -1,27 +1,75 @@
-###########################################################
-## Standard rules for building a static library for the host.
-##
-## Additional inputs from base_rules.make:
-## None.
-##
-## LOCAL_MODULE_SUFFIX will be set for you.
-###########################################################
-
-ifeq ($(strip $(LOCAL_MODULE_CLASS)),)
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-endif
-ifeq ($(strip $(LOCAL_MODULE_SUFFIX)),)
-LOCAL_MODULE_SUFFIX := .a
-endif
-ifneq ($(strip $(LOCAL_MODULE_STEM)$(LOCAL_BUILT_MODULE_STEM)),)
-$(error $(LOCAL_PATH): Cannot set module stem for a library)
-endif
-LOCAL_UNINSTALLABLE_MODULE := true
-
 LOCAL_IS_HOST_MODULE := true
+my_prefix := HOST_
+LOCAL_HOST_PREFIX :=
+include $(BUILD_SYSTEM)/multilib.mk
 
-include $(BUILD_SYSTEM)/binary.mk
+ifndef LOCAL_MODULE_HOST_ARCH
+ifndef my_module_multilib
+ifeq ($(HOST_PREFER_32_BIT),true)
+my_module_multilib := 32
+else
+# libraries default to building for both architecturess
+my_module_multilib := both
+endif
+endif
+endif
 
-$(LOCAL_BUILT_MODULE): $(built_whole_libraries)
-$(LOCAL_BUILT_MODULE): $(all_objects)
-	$(transform-host-o-to-static-lib)
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+
+ifeq ($(my_module_arch_supported),true)
+include $(BUILD_SYSTEM)/host_static_library_internal.mk
+endif
+
+ifdef HOST_2ND_ARCH
+LOCAL_2ND_ARCH_VAR_PREFIX := $(HOST_2ND_ARCH_VAR_PREFIX)
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+ifeq ($(my_module_arch_supported),true)
+# Build for HOST_2ND_ARCH
+OVERRIDE_BUILT_MODULE_PATH :=
+LOCAL_BUILT_MODULE :=
+LOCAL_INSTALLED_MODULE :=
+LOCAL_INTERMEDIATE_TARGETS :=
+
+include $(BUILD_SYSTEM)/host_static_library_internal.mk
+endif
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+endif  # HOST_2ND_ARCH
+
+ifdef HOST_CROSS_OS
+my_prefix := HOST_CROSS_
+LOCAL_HOST_PREFIX := $(my_prefix)
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+ifeq ($(my_module_arch_supported),true)
+# Build for Windows
+OVERRIDE_BUILT_MODULE_PATH :=
+LOCAL_BUILT_MODULE :=
+LOCAL_INSTALLED_MODULE :=
+LOCAL_INTERMEDIATE_TARGETS :=
+
+include $(BUILD_SYSTEM)/host_static_library_internal.mk
+endif
+
+ifdef HOST_CROSS_2ND_ARCH
+LOCAL_2ND_ARCH_VAR_PREFIX := $(HOST_CROSS_2ND_ARCH_VAR_PREFIX)
+include $(BUILD_SYSTEM)/module_arch_supported.mk
+ifeq ($(my_module_arch_supported),true)
+# Build for HOST_CROSS_2ND_ARCH
+OVERRIDE_BUILT_MODULE_PATH :=
+LOCAL_BUILT_MODULE :=
+LOCAL_INSTALLED_MODULE :=
+LOCAL_INTERMEDIATE_TARGETS :=
+
+include $(BUILD_SYSTEM)/host_static_library_internal.mk
+endif
+LOCAL_2ND_ARCH_VAR_PREFIX :=
+endif
+LOCAL_HOST_PREFIX :=
+endif
+
+my_module_arch_supported :=
+
+###########################################################
+## Copy headers to the install tree
+###########################################################
+include $(BUILD_COPY_HEADERS)

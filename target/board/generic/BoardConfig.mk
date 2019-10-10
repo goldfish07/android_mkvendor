@@ -5,7 +5,7 @@
 
 # The generic product target doesn't have any hardware-specific pieces.
 TARGET_NO_BOOTLOADER := true
-TARGET_NO_KERNEL := false
+TARGET_NO_KERNEL := true
 TARGET_ARCH := arm
 
 # Note: we build the platform images for ARMv7-A _without_ NEON.
@@ -40,7 +40,6 @@ endif
 
 # Build OpenGLES emulation guest and host libraries
 BUILD_EMULATOR_OPENGL := true
-BUILD_EMULATOR_OPENGL_DRIVER := true
 
 # Build and enable the OpenGL ES View renderer. When running on the emulator,
 # the GLES renderer disables itself if host GL acceleration isn't available.
@@ -69,12 +68,16 @@ USE_OPENGL_RENDERER := true
 VSYNC_EVENT_PHASE_OFFSET_NS := 0
 
 TARGET_USERIMAGES_USE_EXT4 := true
-BOARD_SYSTEMIMAGE_PARTITION_SIZE := 576716800
-BOARD_USERDATAIMAGE_PARTITION_SIZE := 209715200
+BOARD_SYSTEMIMAGE_PARTITION_SIZE := 1879048192  # 1.75 GB
+BOARD_USERDATAIMAGE_PARTITION_SIZE := 576716800
 BOARD_CACHEIMAGE_PARTITION_SIZE := 69206016
 BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_FLASH_BLOCK_SIZE := 512
 TARGET_USERIMAGES_SPARSE_EXT_DISABLED := true
 
 BOARD_SEPOLICY_DIRS += build/target/board/generic/sepolicy
-BOARD_SEPOLICY_UNION += domain.te surfaceflinger.te
+
+ifeq ($(TARGET_PRODUCT),sdk)
+  # include an expanded selection of fonts for the SDK.
+  EXTENDED_FONT_FOOTPRINT := true
+endif

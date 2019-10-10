@@ -200,6 +200,12 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/priv-app/DMService.apk)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/SprintDM.apk)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/etc/omadm)
 
+# GCC 4.8
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/EXECUTABLES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/lib/*.o)
+
 # KLP I mean KitKat now API 19.
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
@@ -211,14 +217,162 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 # 4.4.2
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
-# 4.4.3
+# "L" and beyond.
+# Make libart the default runtime
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
-# 4.4.4
+# Rename persist.sys.dalvik.vm.lib to allow new default
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
-# Added new build props
+# KKWT development
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# L development
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# L development
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# Add ro.product.cpu.abilist{32,64} to build.prop.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Unset TARGET_PREFER_32_BIT_APPS for 64 bit targets.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Adding dalvik.vm.dex2oat-flags to eng builds
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Unset TARGET_PREFER_32_BIT_APPS for 64 bit targets.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Switching the x86 emulator over to a 64 bit primary zygote.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+
+# Rename persist.sys.dalvik.vm.lib.1 to allow new default
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Switching PRODUCT_RUNTIMES default for some devices
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Switching to 32-bit-by-default host multilib build
+$(call add-clean-step, rm -rf $(HOST_OUT_INTERMEDIATES))
+
+# KKWT has become API 20
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# ims-common.jar added to BOOTCLASSPATH
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/ETC/init.environ.rc_intermediates)
+
+# Change ro.zygote for core_64_bit.mk from zygote32_64 to zygote64_32
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# Adding dalvik.vm.dex2oat-Xms, dalvik.vm.dex2oat-Xmx
+# dalvik.vm.image-dex2oat-Xms, and dalvik.vm.image-dex2oat-Xmx
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system)
+
+# Switch host builds to Clang by default
+$(call add-clean-step, rm -rf $(OUT_DIR)/host)
+
+# Adding dalvik.vm.dex2oat-filter
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# API 21?
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# API 21!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# API 22!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# Move to libc++ as the default STL.
+$(call add-clean-step, rm -rf $(OUT_DIR))
+
+# dex2oat instruction-set changes
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# Make GNU++11 the default standard version. This requires a cleanspec because
+# char16_t/char32_t will be real types now instead of typedefs, which means
+# an ABI change since the names will mangle differently.
+$(call add-clean-step, rm -rf $(OUT_DIR))
+
+# 5.1!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# Remove ro.product.locale.language/country and add ro.product.locale
+# instead.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# On to MNC
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# Adding dalvik.vm.usejit
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# Rename dalvik.vm.usejit to debug.dalvik.vm.usejit
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# Revert rename dalvik.vm.usejit to debug.dalvik.vm.usejit
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# Change from interpret-only to verify-at-runtime.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/default.prop)
+
+# New York, New York!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# 23 is becoming alive!!!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Change PLATFORM_VERSION from NYC to N
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# $(PRODUCT_OUT)/recovery/root/sdcard goes from symlink to folder.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/recovery/root/sdcard)
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST

@@ -20,26 +20,30 @@
 PRODUCT_PACKAGES += \
     adb \
     adbd \
+    atrace \
     bootanimation \
+    bootstat \
+    cmd \
     debuggerd \
     dumpstate \
     dumpsys \
+    fastboot \
     gralloc.default \
+    grep \
     gzip \
     healthd \
     init \
     init.environ.rc \
     init.rc \
-    input \
     libEGL \
     libETC1 \
     libFFTEm \
-    libGLES_android \
     libGLESv1_CM \
     libGLESv2 \
+    libGLESv3 \
     libbinder \
     libc \
-    libctest \
+    libc_malloc_debug \
     libcutils \
     libdl \
     libgui \
@@ -50,35 +54,45 @@ PRODUCT_PACKAGES += \
     libm \
     libpixelflinger \
     libpower \
+    libsigchain \
     libstdc++ \
-    libstlport \
     libsurfaceflinger \
     libsurfaceflinger_ddmconnection \
     libsysutils \
-    libthread_db \
     libui \
     libutils \
     linker \
+    lmkd \
     logcat \
     logwrapper \
+    mkshrc \
     reboot \
+    recovery \
     service \
     servicemanager \
+    sh \
     surfaceflinger \
-    toolbox
+    toolbox \
+    toybox \
+    tzdatacheck \
 
 # SELinux packages
 PRODUCT_PACKAGES += \
-    auditd \
     sepolicy \
-    file_contexts \
+    file_contexts.bin \
     seapp_contexts \
     property_contexts \
-    mac_permissions.xml
+    mac_permissions.xml \
+    selinux_version \
+    service_contexts
 
+# Ensure that this property is always defined so that bionic_systrace.cpp
+# can rely on it being initially set by init.
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    debug.atrace.tags.enableflags=0
 
 PRODUCT_COPY_FILES += \
     system/core/rootdir/init.usb.rc:root/init.usb.rc \
-    system/core/rootdir/init.trace.rc:root/init.trace.rc \
+    system/core/rootdir/init.usb.configfs.rc:root/init.usb.configfs.rc \
     system/core/rootdir/ueventd.rc:root/ueventd.rc \
     system/core/rootdir/etc/hosts:system/etc/hosts

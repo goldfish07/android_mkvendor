@@ -17,46 +17,24 @@
 # This is a generic phone product that isn't specialized for a specific device.
 # It includes the base Android platform.
 
-PRODUCT_POLICY := android.policy_phone
-
 PRODUCT_PACKAGES := \
-    DeskClock \
     Bluetooth \
-    Calculator \
-    Calendar \
+    BluetoothMidiService \
     Camera2 \
-    CertInstaller \
-    Email \
-    Exchange2 \
-    FusedLocation \
     Gallery2 \
-    InputDevices \
-    Keyguard \
-    LatinIME \
-    Launcher2 \
     Music \
+    MusicFX \
     OneTimeInitializer \
-    PrintSpooler \
     Provision \
-    Settings \
     SystemUI \
-    TeleService \
-    CalendarProvider \
-    bluetooth-health \
-    hostapd \
-    wpa_supplicant.conf \
+    EasterEgg \
     WallpaperCropper
 
 PRODUCT_PACKAGES += \
-    audio \
     clatd \
     clatd.conf \
-    dhcpcd.conf \
-    network \
-    pand \
     pppd \
-    sdptool \
-    wpa_supplicant
+    screenrecord
 
 PRODUCT_PACKAGES += \
     librs_jni
@@ -65,10 +43,8 @@ PRODUCT_PACKAGES += \
     audio.primary.default \
     audio_policy.default \
     local_time.default \
+    vibrator.default \
     power.default
-
-PRODUCT_PACKAGES += \
-    local_time.default
 
 PRODUCT_COPY_FILES := \
         frameworks/av/media/libeffects/data/audio_effects.conf:system/etc/audio_effects.conf
@@ -77,9 +53,14 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.carrier=unknown
 
 $(call inherit-product-if-exists, frameworks/base/data/fonts/fonts.mk)
+$(call inherit-product-if-exists, external/google-fonts/dancing-script/fonts.mk)
+$(call inherit-product-if-exists, external/google-fonts/carrois-gothic-sc/fonts.mk)
+$(call inherit-product-if-exists, external/google-fonts/coming-soon/fonts.mk)
+$(call inherit-product-if-exists, external/google-fonts/cutive-mono/fonts.mk)
 $(call inherit-product-if-exists, external/noto-fonts/fonts.mk)
 $(call inherit-product-if-exists, external/naver-fonts/fonts.mk)
-$(call inherit-product-if-exists, external/sil-fonts/fonts.mk)
+$(call inherit-product-if-exists, external/roboto-fonts/fonts.mk)
+$(call inherit-product-if-exists, external/hyphenation-patterns/patterns.mk)
 $(call inherit-product-if-exists, frameworks/base/data/keyboards/keyboards.mk)
 $(call inherit-product-if-exists, frameworks/webview/chromium/chromium.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core.mk)

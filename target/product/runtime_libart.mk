@@ -17,18 +17,46 @@
 # Provides a functioning ART environment without Android frameworks
 
 PRODUCT_PACKAGES += \
-        core-libart \
-        libart \
-        dex2oat \
-        oatdump
+    apache-xml \
+    ahat \
+    bouncycastle \
+    cacerts \
+    conscrypt \
+    core-oj \
+    core-junit \
+    core-libart \
+    dalvikvm \
+    dex2oat \
+    dexdeps \
+    dexdump \
+    dexlist \
+    dmtracedump \
+    dx \
+    ext \
+    hprof-conv \
+    libart \
+    libart_fake \
+    libcrypto \
+    libexpat \
+    libicui18n \
+    libicuuc \
+    libjavacore \
+    libopenjdk \
+    libopenjdkjvm \
+    libnativehelper \
+    libssl \
+    libz \
+    oatdump \
+    okhttp \
+    patchoat \
+    profman
 
-# host-only dependencies
-ifeq ($(WITH_HOST_DALVIK),true)
-    PRODUCT_PACKAGES += \
-        core-libart-hostdex
-endif
-
-# We currently don't suport DEX_PREOPT for art
-DEX_PREOPT_DEFAULT := nostripping
-
-include $(SRC_TARGET_DIR)/product/runtime_common.mk
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    dalvik.vm.image-dex2oat-Xms=64m \
+    dalvik.vm.image-dex2oat-Xmx=64m \
+    dalvik.vm.dex2oat-Xms=64m \
+    dalvik.vm.dex2oat-Xmx=512m \
+    ro.dalvik.vm.native.bridge=0 \
+    dalvik.vm.usejit=true \
+    dalvik.vm.usejitprofiles=true \
+    dalvik.vm.appimageformat=lz4

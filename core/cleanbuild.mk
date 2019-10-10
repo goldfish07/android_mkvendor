@@ -54,6 +54,7 @@ endef
 # can have permission to touch it.
 include $(BUILD_SYSTEM)/cleanspec.mk
 INTERNAL_CLEAN_BUILD_VERSION := $(strip $(INTERNAL_CLEAN_BUILD_VERSION))
+INTERNAL_CLEAN_STEPS := $(strip $(INTERNAL_CLEAN_STEPS))
 
 # If the clean_steps.mk file is missing (usually after a clean build)
 # then we won't do anything.
@@ -81,22 +82,63 @@ else
     $(info Clean step: $(INTERNAL_CLEAN_STEP.$(step))) \
     $(shell $(INTERNAL_CLEAN_STEP.$(step))) \
    )
+
+  # Rewrite the clean step for the second arch.
+  ifdef TARGET_2ND_ARCH
+  # $(1): the clean step cmd
+  # $(2): the prefix to search for
+  # $(3): the prefix to replace with
+  define -cs-rewrite-cleanstep
+  $(if $(filter $(2)/%,$(1)),\
+    $(eval _crs_new_cmd := $(patsubst $(2)/%,$(3)/%,$(1)))\
+    $(info Clean step: $(_crs_new_cmd))\
+    $(shell $(_crs_new_cmd)))
+  endef
+  $(foreach step,$(steps), \
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_INTERMEDIATES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_SHARED_LIBRARIES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_VENDOR_SHARED_LIBRARIES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_VENDOR_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATES),$(TARGET_OUT_INTERMEDIATES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_SHARED_LIBRARIES),$(TARGET_OUT_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_VENDOR_SHARED_LIBRARIES),$(TARGET_OUT_VENDOR_SHARED_LIBRARIES))\
+    )
+  endif
+  _crs_new_cmd :=
   steps :=
 endif
-CURRENT_CLEAN_BUILD_VERSION :=
-CURRENT_CLEAN_STEPS :=
 
 # Write the new state to the file.
 #
+rewrite_clean_steps_file :=
+ifneq ($(CURRENT_CLEAN_BUILD_VERSION)-$(CURRENT_CLEAN_STEPS),$(INTERNAL_CLEAN_BUILD_VERSION)-$(INTERNAL_CLEAN_STEPS))
+rewrite_clean_steps_file := true
+endif
+ifeq ($(wildcard $(clean_steps_file)),)
+# This is the first build.
+rewrite_clean_steps_file := true
+endif
+ifeq ($(rewrite_clean_steps_file),true)
 $(shell \
   mkdir -p $(dir $(clean_steps_file)) && \
   echo "CURRENT_CLEAN_BUILD_VERSION := $(INTERNAL_CLEAN_BUILD_VERSION)" > \
       $(clean_steps_file) ;\
-  echo "CURRENT_CLEAN_STEPS := $(INTERNAL_CLEAN_STEPS)" >> \
-      $(clean_steps_file) \
+  echo "CURRENT_CLEAN_STEPS := $(wordlist 1,500,$(INTERNAL_CLEAN_STEPS))" >> $(clean_steps_file) \
  )
+define -cs-write-clean-steps-if-arg1-not-empty
+$(if $(1),$(shell echo "CURRENT_CLEAN_STEPS += $(1)" >> $(clean_steps_file)))
+endef
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 501,1000,$(INTERNAL_CLEAN_STEPS)))
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 1001,1500,$(INTERNAL_CLEAN_STEPS)))
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 1501,2000,$(INTERNAL_CLEAN_STEPS)))
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 2001,2500,$(INTERNAL_CLEAN_STEPS)))
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 2501,3000,$(INTERNAL_CLEAN_STEPS)))
+$(call -cs-write-clean-steps-if-arg1-not-empty,$(wordlist 3001,99999,$(INTERNAL_CLEAN_STEPS)))
+endif
 
+CURRENT_CLEAN_BUILD_VERSION :=
+CURRENT_CLEAN_STEPS :=
 clean_steps_file :=
+rewrite_clean_steps_file :=
 INTERNAL_CLEAN_STEPS :=
 INTERNAL_CLEAN_BUILD_VERSION :=
 
@@ -110,32 +152,28 @@ endif  # if not ONE_SHOT_MAKEFILE dont_bother
 
 previous_build_config_file := $(PRODUCT_OUT)/previous_build_config.mk
 
-# TODO: this special case for the sdk is only necessary while "sdk"
-# is a valid make target.  Eventually, it will just be a product, at
-# which point TARGET_PRODUCT will handle it and we can avoid this check
-# of MAKECMDGOALS.  The "addprefix" is just to keep things pretty.
-ifneq ($(TARGET_PRODUCT),sdk)
-  building_sdk := $(addprefix -,$(filter sdk,$(MAKECMDGOALS)))
-else
-  # Don't bother with this extra part when explicitly building the sdk product.
-  building_sdk :=
-endif
-
 # A change in the list of aapt configs warrants an installclean, too.
 aapt_config_list := $(strip $(PRODUCT_AAPT_CONFIG) $(PRODUCT_AAPT_PREF_CONFIG))
 
 current_build_config := \
-    $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)$(building_sdk)-{$(aapt_config_list)}
-building_sdk :=
+    $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)-{$(aapt_config_list)}
+current_sanitize_target := $(strip $(SANITIZE_TARGET))
+ifeq (,$(current_sanitize_target))
+  current_sanitize_target := false
+endif
 aapt_config_list :=
 force_installclean := false
+force_objclean := false
 
 # Read the current state from the file, if present.
 # Will set PREVIOUS_BUILD_CONFIG.
 #
 PREVIOUS_BUILD_CONFIG :=
+PREVIOUS_SANITIZE_TARGET :=
 -include $(previous_build_config_file)
 PREVIOUS_BUILD_CONFIG := $(strip $(PREVIOUS_BUILD_CONFIG))
+PREVIOUS_SANITIZE_TARGET := $(strip $(PREVIOUS_SANITIZE_TARGET))
+
 ifdef PREVIOUS_BUILD_CONFIG
   ifneq "$(current_build_config)" "$(PREVIOUS_BUILD_CONFIG)"
     $(info *** Build configuration changed: "$(PREVIOUS_BUILD_CONFIG)" -> "$(current_build_config)")
@@ -146,15 +184,27 @@ ifdef PREVIOUS_BUILD_CONFIG
     endif
   endif
 endif  # else, this is the first build, so no need to clean.
-PREVIOUS_BUILD_CONFIG :=
+
+ifdef PREVIOUS_SANITIZE_TARGET
+  ifneq "$(current_sanitize_target)" "$(PREVIOUS_SANITIZE_TARGET)"
+    $(info *** SANITIZE_TARGET changed: "$(PREVIOUS_SANITIZE_TARGET)" -> "$(current_sanitize_target)")
+    force_objclean := true
+  endif
+endif  # else, this is the first build, so no need to clean.
 
 # Write the new state to the file.
 #
+ifneq ($(PREVIOUS_BUILD_CONFIG)-$(PREVIOUS_SANITIZE_TARGET),$(current_build_config)-$(current_sanitize_target))
 $(shell \
   mkdir -p $(dir $(previous_build_config_file)) && \
   echo "PREVIOUS_BUILD_CONFIG := $(current_build_config)" > \
+      $(previous_build_config_file) && \
+  echo "PREVIOUS_SANITIZE_TARGET := $(current_sanitize_target)" >> \
       $(previous_build_config_file) \
  )
+endif
+PREVIOUS_BUILD_CONFIG :=
+PREVIOUS_SANITIZE_TARGET :=
 previous_build_config_file :=
 current_build_config :=
 
@@ -179,25 +229,33 @@ installclean_files := \
 	$(HOST_OUT)/obj/NOTICE_FILES \
 	$(HOST_OUT)/sdk \
 	$(PRODUCT_OUT)/*.img \
+	$(PRODUCT_OUT)/*.ini \
 	$(PRODUCT_OUT)/*.txt \
 	$(PRODUCT_OUT)/*.xlb \
 	$(PRODUCT_OUT)/*.zip \
-	$(PRODUCT_OUT)/*.zip.md5sum \
 	$(PRODUCT_OUT)/kernel \
+	$(PRODUCT_OUT)/*.zip.md5sum \
 	$(PRODUCT_OUT)/data \
+	$(PRODUCT_OUT)/skin \
 	$(PRODUCT_OUT)/obj/APPS \
 	$(PRODUCT_OUT)/obj/NOTICE_FILES \
 	$(PRODUCT_OUT)/obj/PACKAGING \
 	$(PRODUCT_OUT)/recovery \
 	$(PRODUCT_OUT)/root \
 	$(PRODUCT_OUT)/system \
+	$(PRODUCT_OUT)/vendor \
+	$(PRODUCT_OUT)/oem \
 	$(PRODUCT_OUT)/dex_bootjars \
 	$(PRODUCT_OUT)/obj/JAVA_LIBRARIES \
 	$(PRODUCT_OUT)/obj/FAKE \
 	$(PRODUCT_OUT)/obj/EXECUTABLES/adbd_intermediates \
+	$(PRODUCT_OUT)/obj/EXECUTABLES/logd_intermediates \
+	$(PRODUCT_OUT)/obj/STATIC_LIBRARIES/libfs_mgr_intermediates \
 	$(PRODUCT_OUT)/obj/EXECUTABLES/init_intermediates \
 	$(PRODUCT_OUT)/obj/ETC/mac_permissions.xml_intermediates \
-	$(PRODUCT_OUT)/obj/ETC/sepolicy_intermediates
+	$(PRODUCT_OUT)/obj/ETC/sepolicy_intermediates \
+	$(PRODUCT_OUT)/obj/ETC/sepolicy.recovery_intermediates \
+	$(PRODUCT_OUT)/obj/ETC/init.environ.rc_intermediates
 
 # The files/dirs to delete during a dataclean, which removes any files
 # in the staging and emulator data partitions.
@@ -205,6 +263,12 @@ dataclean_files := \
 	$(PRODUCT_OUT)/data/* \
 	$(PRODUCT_OUT)/data-qemu/* \
 	$(PRODUCT_OUT)/userdata-qemu.img
+
+# The files/dirs to delete during an objclean, which removes any files
+# in the staging and emulator data partitions.
+objclean_files := \
+	$(TARGET_OUT_INTERMEDIATES) \
+	$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATES)
 
 # make sure *_OUT is set so that we won't result in deleting random parts
 # of the filesystem.
@@ -217,13 +281,19 @@ endif
 dataclean: FILES := $(dataclean_files)
 dataclean:
 	$(hide) rm -rf $(FILES)
-	@echo -e ${CL_GRN}"Deleted emulator userdata images."${CL_RST}
+	@echo "Deleted emulator userdata images."
 
 .PHONY: installclean
 installclean: FILES := $(installclean_files)
 installclean: dataclean
 	$(hide) rm -rf $(FILES)
-	@echo -e ${CL_GRN}"Deleted images and staging directories."${CL_RST}
+	@echo "Deleted images and staging directories."
+
+.PHONY: objclean
+objclean: FILES := $(objclean_files)
+objclean:
+	$(hide) rm -rf $(FILES)
+	@echo "Deleted images and staging directories."
 
 ifeq "$(force_installclean)" "true"
   $(info *** Forcing "make installclean"...)
@@ -232,3 +302,31 @@ ifeq "$(force_installclean)" "true"
   $(info *** Done with the cleaning, now starting the real build.)
 endif
 force_installclean :=
+
+ifeq "$(force_objclean)" "true"
+  $(info *** Forcing cleanup of intermediate files...)
+  $(info *** rm -rf $(objclean_files))
+  $(shell rm -rf $(objclean_files))
+  $(info *** Done with the cleaning, now starting the real build.)
+endif
+force_objclean :=
+
+###########################################################
+
+.PHONY: clean-jack-files
+clean-jack-files: clean-dex-files
+	$(hide) find $(OUT_DIR) -name "*.jack" | xargs rm -f
+	$(hide) find $(OUT_DIR) -type d -name "jack" | xargs rm -rf
+	@echo "All jack files have been removed."
+
+.PHONY: clean-dex-files
+clean-dex-files:
+	$(hide) find $(OUT_DIR) -name "*.dex" ! -path "*/jack-incremental/*" | xargs rm -f
+	$(hide) for i in `find $(OUT_DIR) -name "*.jar" -o -name "*.apk"` ; do ((unzip -l $$i 2> /dev/null | \
+				grep -q "\.dex$$" && rm -f $$i) || continue ) ; done
+	@echo "All dex files and archives containing dex files have been removed."
+
+.PHONY: clean-jack-incremental
+clean-jack-incremental:
+	$(hide) find $(OUT_DIR) -name "jack-incremental" -type d | xargs rm -rf
+	@echo "All jack incremental dirs have been removed."

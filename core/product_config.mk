@@ -117,7 +117,7 @@ ifdef product_goals
   # which really means TARGET_PRODUCT=dream make installclean.
   ifneq ($(filter-out $(INTERNAL_VALID_VARIANTS),$(TARGET_BUILD_VARIANT)),)
     MAKECMDGOALS := $(MAKECMDGOALS) $(TARGET_BUILD_VARIANT)
-    TARGET_BUILD_VARIANT := eng
+    TARGET_BUILD_VARIANT := userdebug
     default_goal_substitution :=
   else
     default_goal_substitution := $(DEFAULT_GOAL)
@@ -149,7 +149,7 @@ endif
 unbundled_goals := $(strip $(filter APP-%,$(MAKECMDGOALS)))
 ifdef unbundled_goals
   ifneq ($(words $(unbundled_goals)),1)
-    $(error Only one APP-* goal may be specified; saw "$(unbundled_goals)"))
+    $(error Only one APP-* goal may be specified; saw "$(unbundled_goals)")
   endif
   TARGET_BUILD_APPS := $(strip $(subst -, ,$(patsubst APP-%,%,$(unbundled_goals))))
   ifneq ($(filter $(DEFAULT_GOAL),$(MAKECMDGOALS)),)
@@ -181,11 +181,7 @@ include $(BUILD_SYSTEM)/device.mk
 
 # A CM build needs only the CM product makefiles.
 ifneq ($(CM_BUILD),)
-  all_product_configs := $(shell ls device/*/$(CM_BUILD)/lineage.mk)
-  ifeq ($(all_product_configs),)
-    # Fall back to cm.mk
-    all_product_configs := $(shell ls device/*/$(CM_BUILD)/cm.mk)
-  endif
+  all_product_configs := $(shell find device -path "*/$(CM_BUILD)/cm.mk")
 else
   ifneq ($(strip $(TARGET_BUILD_APPS)),)
   # An unbundled app build needs only the core product makefiles.
@@ -228,8 +224,19 @@ endif
 current_product_makefile := $(strip $(current_product_makefile))
 all_product_makefiles := $(strip $(all_product_makefiles))
 
+load_all_product_makefiles :=
+ifneq (,$(filter product-graph, $(MAKECMDGOALS)))
+ifeq ($(ANDROID_PRODUCT_GRAPH),--all)
+load_all_product_makefiles := true
+endif
+endif
+ifneq (,$(filter dump-products,$(MAKECMDGOALS)))
+ifeq ($(ANDROID_DUMP_PRODUCTS),all)
+load_all_product_makefiles := true
+endif
+endif
 
-ifneq (,$(filter product-graph dump-products, $(MAKECMDGOALS)))
+ifeq ($(load_all_product_makefiles),true)
 # Import all product makefiles.
 $(call import-products, $(all_product_makefiles))
 else
@@ -264,28 +271,10 @@ all_product_configs :=
 
 
 #############################################################################
-# TODO: Remove this hack once only 1 runtime is left.
-# Include the runtime product makefile based on the product's PRODUCT_RUNTIMES
-$(call clear-var-list, $(_product_var_list))
-
-# Set PRODUCT_RUNTIMES, allowing buildspec to override using OVERRIDE_RUNTIMES
-product_runtimes := $(sort $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_RUNTIMES))
-ifneq ($(OVERRIDE_RUNTIMES),)
-  $(info Overriding PRODUCT_RUNTIMES=$(product_runtimes) with $(OVERRIDE_RUNTIMES))
-  product_runtimes := $(OVERRIDE_RUNTIMES)
-endif
-$(foreach runtime, $(product_runtimes), $(eval include $(SRC_TARGET_DIR)/product/$(runtime).mk))
-$(foreach v, $(_product_var_list), $(if $($(v)),\
-    $(eval PRODUCTS.$(INTERNAL_PRODUCT).$(v) += $(sort $($(v))))))
-
-$(call clear-var-list, $(_product_var_list))
-# Now we can assign to PRODUCT_RUNTIMES
-PRODUCT_RUNTIMES := $(product_runtimes)
-product_runtimes :=
-#############################################################################
 
 # A list of module names of BOOTCLASSPATH (jar files)
-PRODUCT_BOOT_JARS := $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BOOT_JARS)
+PRODUCT_BOOT_JARS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BOOT_JARS))
+PRODUCT_SYSTEM_SERVER_JARS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SYSTEM_SERVER_JARS))
 
 # Find the device that this product maps to.
 TARGET_DEVICE := $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEVICE)
@@ -308,26 +297,25 @@ ifneq (,$(extra_locales))
 endif
 
 # Add PRODUCT_LOCALES to PRODUCT_AAPT_CONFIG
-PRODUCT_AAPT_CONFIG := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_CONFIG))
-PRODUCT_AAPT_CONFIG := $(PRODUCT_LOCALES) $(PRODUCT_AAPT_CONFIG)
+PRODUCT_AAPT_CONFIG := $(strip $(PRODUCT_LOCALES) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_CONFIG))
 PRODUCT_AAPT_PREF_CONFIG := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_PREF_CONFIG))
+PRODUCT_AAPT_PREBUILT_DPI := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_PREBUILT_DPI))
 
-# Default to medium-density assets.
-# (Can be overridden in the device config, e.g.: PRODUCT_AAPT_CONFIG += hdpi)
-PRODUCT_AAPT_CONFIG := $(strip \
-    $(PRODUCT_AAPT_CONFIG) \
-    $(if $(filter %dpi,$(PRODUCT_AAPT_CONFIG)),,mdpi))
-PRODUCT_AAPT_PREF_CONFIG := $(strip $(PRODUCT_AAPT_PREF_CONFIG))
-
-# Everyone gets nodpi assets which are density-independent.
-PRODUCT_AAPT_CONFIG += nodpi
+# Keep a copy of the space-separated config
+PRODUCT_AAPT_CONFIG_SP := $(PRODUCT_AAPT_CONFIG)
 
 # Convert spaces to commas.
-comma := ,
 PRODUCT_AAPT_CONFIG := \
     $(subst $(space),$(comma),$(strip $(PRODUCT_AAPT_CONFIG)))
-PRODUCT_AAPT_PREF_CONFIG := \
-    $(subst $(space),$(comma),$(strip $(PRODUCT_AAPT_PREF_CONFIG)))
+
+# product-scoped aapt flags
+PRODUCT_AAPT_FLAGS :=
+PRODUCT_AAPT2_CFLAGS :=
+ifneq ($(filter en_XA ar_XB,$(PRODUCT_LOCALES)),)
+  # Force generating resources for pseudo-locales.
+  PRODUCT_AAPT2_CFLAGS += --pseudo-localize
+  PRODUCT_AAPT_FLAGS += --pseudo-localize
+endif
 
 PRODUCT_BRAND := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BRAND))
 
@@ -396,6 +384,12 @@ listcopies:
 PRODUCT_PROPERTY_OVERRIDES := \
     $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PROPERTY_OVERRIDES))
 
+PRODUCT_SHIPPING_API_LEVEL := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SHIPPING_API_LEVEL))
+ifdef PRODUCT_SHIPPING_API_LEVEL
+ADDITIONAL_BUILD_PROPERTIES += \
+    ro.product.first_api_level=$(PRODUCT_SHIPPING_API_LEVEL)
+endif
+
 # A list of property assignments, like "key = value", with zero or more
 # whitespace characters on either side of the '='.
 # used for adding properties to default.prop
@@ -410,9 +404,6 @@ PRODUCT_PACKAGE_OVERLAYS := \
     $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PACKAGE_OVERLAYS))
 DEVICE_PACKAGE_OVERLAYS := \
         $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).DEVICE_PACKAGE_OVERLAYS))
-
-# An list of whitespace-separated words.
-PRODUCT_TAGS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_TAGS))
 
 # The list of product-specific kernel header dirs
 PRODUCT_VENDOR_KERNEL_HEADERS := \
@@ -432,3 +423,21 @@ PRODUCT_OTA_PUBLIC_KEYS := $(sort \
 
 PRODUCT_EXTRA_RECOVERY_KEYS := $(sort \
     $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_EXTRA_RECOVERY_KEYS))
+
+PRODUCT_DEX_PREOPT_DEFAULT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_DEFAULT_FLAGS))
+PRODUCT_DEX_PREOPT_BOOT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_BOOT_FLAGS))
+# Resolve and setup per-module dex-preopot configs.
+PRODUCT_DEX_PREOPT_MODULE_CONFIGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_MODULE_CONFIGS))
+# If a module has multiple setups, the first takes precedence.
+_pdpmc_modules :=
+$(foreach c,$(PRODUCT_DEX_PREOPT_MODULE_CONFIGS),\
+  $(eval m := $(firstword $(subst =,$(space),$(c))))\
+  $(if $(filter $(_pdpmc_modules),$(m)),,\
+    $(eval _pdpmc_modules += $(m))\
+    $(eval cf := $(patsubst $(m)=%,%,$(c)))\
+    $(eval cf := $(subst $(_PDPMC_SP_PLACE_HOLDER),$(space),$(cf)))\
+    $(eval DEXPREOPT.$(TARGET_PRODUCT).$(m).CONFIG := $(cf))))
+_pdpmc_modules :=
