@@ -61,8 +61,10 @@ then
     mkdir -p $TMPDIR
     cp $BOOTIMAGE $TMPDIR
     pushd $TMPDIR > /dev/null
+    echo "unpacking... $BOOTIMAGEFILE"
     unpackbootimg -i $BOOTIMAGEFILE > /dev/null
     echo "creating directory ramdisk"
+    sleep 1
     mkdir ramdisk
     pushd ramdisk > /dev/null
     gunzip -c ../$BOOTIMAGEFILE-ramdisk.gz | cpio -i
