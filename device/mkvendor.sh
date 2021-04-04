@@ -108,7 +108,6 @@ then
 fi
 
 
-mv $DEVICE_DIR/device.mk $DEVICE_DIR/device_$DEVICE.mk
 mv $DEVICE_DIR/lineage.mk $DEVICE_DIR/lineage_$DEVICE.mk
 
 
