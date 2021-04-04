@@ -17,6 +17,6 @@ PRODUCT_MAKEFILES := \
 
 
 COMMON_LUNCH_CHOICES := \
-     lineage____DEVICE__-userdebug \
-     lineage____DEVICE__-eng \
-     lineage____DEVICE__-user
+     lineage___DEVICE__-userdebug \
+     lineage___DEVICE__-eng \
+     lineage___DEVICE__-user
