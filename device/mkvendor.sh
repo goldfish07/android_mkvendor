@@ -17,7 +17,7 @@ MANUFACTURER=$1
 DEVICE=$2
 BOOTIMAGE=$3
 
-UNPACKBOOTIMG=$(which unpackbootimg)
+UNPACKBOOTIMG=$(pwd)/../
 
 echo Arguments: $@
 
