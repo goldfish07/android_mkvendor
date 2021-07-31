@@ -31,9 +31,7 @@ then
     usage
 fi
 
-ANDROID_TOP=$(dirname $0)/../../../
-pushd $ANDROID_TOP > /dev/null
-ANDROID_TOP=$(pwd)
+ANDROID_TOP=$(pwd)/..
 popd > /dev/null
 
 TEMPLATE_DIR=$(dirname $0)
