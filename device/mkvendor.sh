@@ -17,7 +17,7 @@ MANUFACTURER=$1
 DEVICE=$2
 BOOTIMAGE=$3
 
-UNPACKBOOTIMG=$(pwd)/../
+UNPACKBOOTIMG=$(pwd)/../bin
 
 echo Arguments: $@
 
@@ -62,7 +62,7 @@ then
     pushd $TMPDIR > /dev/null
     echo "unpacking... $BOOTIMAGEFILE [$BOOTIMAGE]"
     echo
-    unpackbootimg -i $BOOTIMAGEFILE > /dev/null
+    $UNPACKBOOTIMG/unpackbootimg -i $BOOTIMAGEFILE > /dev/null
     echo "creating directory ramdisk"
     echo
     sleep 1
