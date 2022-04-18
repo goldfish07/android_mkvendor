@@ -1,3 +1,10 @@
 #
 # system.prop for __DEVICE__
 #
+# your blobs files go here 
+## for dynamic partition
+# - extract blobs from super/system
+## for treble devices 
+# - extract blobs from /system
+## for non-treble devices
+# - extract blobs from /system/system
