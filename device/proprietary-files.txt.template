@@ -1,1 +1,7 @@
-#your files go here 
+# your blobs files go here 
+## for dynamic partition
+# - extract blobs from super/vendor
+## for treble devices 
+# - extract blobs from /vendor
+## for non-treble devices
+# - extract blobs from /system/vendor
